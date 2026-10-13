@@ -42,6 +42,9 @@ export const skills = [
   { label: "Tools", value: "Git, Linux, Supabase, Tailwind CSS" },
 ] as const;
 
+/** Things he actually does outside of school and projects. */
+export const likes = ["Travelling", "Photography", "Gym"] as const;
+
 /** Jobs, when there is one to list. Leave empty until then. */
 export const experience: {
   role: string;

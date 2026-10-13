@@ -9,13 +9,34 @@ html {
   background: #fff;
   color: #000;
   color-scheme: light;
-  scroll-behavior: smooth;
   scroll-padding-top: calc(4.5rem + env(safe-area-inset-top));
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  .tap,
+  .tone,
+  .slide,
+  .reveal,
+  .link-draw,
+  .portrait,
+  .portrait-magnet,
+  .spring-mark,
+  .spring-ink {
+    transition: none;
+  }
+
+  .portrait-drift,
+  .hero-copy,
+  .like,
+  .rise,
+  .late {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -25,11 +46,16 @@ a {
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  :root {
+    --spring: cubic-bezier(0.16, 1.2, 0.3, 1);
+    --ink: cubic-bezier(0.2, 0, 0, 1);
+  }
+
   .tap {
     transition:
-      transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
-      background-color 280ms cubic-bezier(0.22, 1, 0.36, 1),
-      color 280ms cubic-bezier(0.22, 1, 0.36, 1);
+      transform 320ms var(--spring),
+      background-color 160ms var(--ink),
+      color 160ms var(--ink);
   }
 
   .tap:active {
@@ -38,18 +64,18 @@ a {
 
   .tone {
     transition:
-      background-color 280ms cubic-bezier(0.22, 1, 0.36, 1),
-      color 280ms cubic-bezier(0.22, 1, 0.36, 1);
+      background-color 160ms var(--ink),
+      color 160ms var(--ink);
   }
 
   .slide {
-    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 320ms var(--spring);
   }
 
   .reveal {
     transition:
-      grid-template-rows 340ms cubic-bezier(0.22, 1, 0.36, 1),
-      opacity 240ms cubic-bezier(0.22, 1, 0.36, 1);
+      grid-template-rows 700ms var(--spring),
+      opacity 520ms var(--spring);
   }
 
   .link-draw {
@@ -57,13 +83,265 @@ a {
     background-position: 0 100%;
     background-repeat: no-repeat;
     background-size: 0 1px;
-    transition: background-size 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: background-size 220ms var(--ink);
   }
 
   .link-draw:hover,
   .link-draw:focus-visible {
     background-size: 100% 1px;
   }
+
+  .portrait {
+    transform-origin: 100% 0%;
+    transition: transform 420ms var(--spring);
+    will-change: transform;
+  }
+
+  .portrait-magnet {
+    transition: transform 320ms var(--spring);
+  }
+
+  .portrait:active:not(.is-open) {
+    transform: scale(1.06);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .portrait:hover:not(.is-open) {
+      transform: scale(1.04);
+    }
+  }
+
+  .spring-mark {
+    transition: transform 380ms var(--spring);
+  }
+
+  .spring-ink {
+    transition: color 140ms var(--ink);
+  }
+
+  .hero-track {
+    height: auto;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-pin {
+    position: relative;
+    top: auto;
+    z-index: 1;
+    min-height: 0;
+  }
+
+  .about-track {
+    height: 250vh;
+  }
+
+  .about-pin {
+    position: sticky;
+    top: calc(3.5rem + env(safe-area-inset-top));
+    z-index: 1;
+    display: flex;
+    min-height: calc(100svh - 3.5rem - env(safe-area-inset-top));
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  @media (min-width: 640px) {
+    .about-pin {
+      top: calc(4rem + env(safe-area-inset-top));
+      min-height: calc(100svh - 4rem - env(safe-area-inset-top));
+    }
+  }
+
+  @supports (animation-timeline: view()) {
+    .hero-track {
+      view-timeline-name: --hero;
+      view-timeline-axis: block;
+    }
+
+    .portrait-drift:not(.is-still) {
+      animation: portrait-drift linear both;
+      animation-timeline: --hero;
+      animation-range: contain 0% contain 100%;
+    }
+
+    .about-track {
+      view-timeline-name: --about;
+      view-timeline-axis: block;
+    }
+
+    .like {
+      animation: like-in linear both;
+      animation-timeline: --about;
+    }
+
+    .like-1 {
+      animation-range: 6% 28%;
+    }
+
+    .like-2 {
+      animation-range: 36% 58%;
+    }
+
+    .like-3 {
+      animation-range: 66% 90%;
+    }
+
+    .rise {
+      animation: like-in linear both;
+      animation-timeline: view();
+      animation-range: entry 18% cover 34%;
+    }
+
+    .late {
+      animation: like-in linear both;
+      animation-timeline: view();
+      animation-range: entry 40% cover 48%;
+    }
+  }
+}
+
+@keyframes portrait-drift {
+  to {
+    transform: translate3d(0, 10vh, 0);
+  }
+}
+
+@keyframes like-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 2.75rem, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.portrait-magnet {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  width: 6rem;
+  height: 6rem;
+}
+
+.portrait-frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 0;
+  border-radius: 9999px;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.portrait-frame.is-open,
+.portrait-frame.is-open:hover,
+.portrait-frame.is-open:active {
+  border-radius: 9999px;
+  transform: scale(1);
+}
+
+.portrait-frame.is-open.is-from {
+  transform: scale(var(--from-s));
+}
+
+.spring-mark {
+  position: absolute;
+  z-index: 0;
+  background: #000;
+  pointer-events: none;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.hairline-ink {
+  --hairline-plate: #fff;
+  --hairline-hi: #000;
+  --hairline-edge: #000;
+  --hairline-mid: #6e6e6e;
+  --hairline-lo: #d4d4d4;
+  --hairline-stroke: 1.05;
+}
+
+.work-track {
+  height: calc(100svh + var(--work-steps, 4) * 42vh + 32vh);
+}
+
+.work-pin {
+  position: sticky;
+  top: calc(3.5rem + env(safe-area-inset-top));
+  z-index: 1;
+  display: flex;
+  height: calc(100svh - 3.5rem - env(safe-area-inset-top));
+  flex-direction: column;
+}
+
+.work-pin.is-expanded {
+  position: fixed;
+  z-index: 40;
+  inset: calc(3.5rem + env(safe-area-inset-top)) 0 0 0;
+  height: auto;
+  background: #fff;
+  padding: 0.75rem 1rem 1rem;
+}
+
+.work-view {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 2.25rem,
+    #000 calc(100% - 2.25rem),
+    transparent 100%
+  );
+}
+
+.work-shift {
+  will-change: transform;
+}
+
+@media (min-width: 640px) {
+  .work-pin {
+    top: calc(4rem + env(safe-area-inset-top));
+    height: calc(100svh - 4rem - env(safe-area-inset-top));
+  }
+
+  .work-pin.is-expanded {
+    top: calc(4rem + env(safe-area-inset-top));
+    padding-right: 2rem;
+    padding-left: 2rem;
+  }
+}
+
+@media (min-width: 640px) {
+  .portrait-magnet {
+    width: 9rem;
+    height: 9rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .portrait-magnet {
+    width: 11rem;
+    height: 11rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .portrait-magnet {
+    width: 13rem;
+    height: 13rem;
+  }
+}
+
+.portrait-magnet.is-open {
+  width: var(--open-size);
+  height: var(--open-size);
 }
 
 body {
