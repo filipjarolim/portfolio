@@ -1,0 +1,182 @@
+%-------------------------
+% Resume in Latex
+% Author : Jake Gutierrez
+% Based off of: https://github.com/sb2nov/resume
+% License : MIT
+%------------------------
+
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\input{glyphtounicode}
+
+
+%----------FONT OPTIONS----------
+% sans-serif
+% \usepackage[sfdefault]{FiraSans}
+% \usepackage[sfdefault]{roboto}
+% \usepackage[sfdefault]{noto-sans}
+% \usepackage[default]{sourcesanspro}
+
+% serif
+% \usepackage{CormorantGaramond}
+% \usepackage{charter}
+
+
+\pagestyle{fancy}
+\fancyhf{} % clear all header and footer fields
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Adjust margins
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Sections formatting
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+% Ensure that generate pdf is machine readable/ATS parsable
+\pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{document}
+
+\begin{center}
+    \textbf{\Huge \scshape Filip Jarolím} \\ \vspace{1pt}
+    \small \href{mailto:jarolimfilip07@gmail.com}{\underline{jarolimfilip07@gmail.com}} $|$
+    \href{https://linkedin.com/in/filip-jarolim}{\underline{linkedin.com/in/filip-jarolim}} $|$
+    \href{https://github.com/filipjarolim}{\underline{github.com/filipjarolim}}
+\end{center}
+
+
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Masaryk University}{Brno, Czech Republic}
+      {B.Sc. Cybersecurity, Faculty of Informatics}{2026 -- Present}
+    \resumeSubheading
+      {Cambridge Assessment English}{}
+      {Cambridge English: First (FCE), CEFR C1}{}
+  \resumeSubHeadingListEnd
+
+
+%-----------PROJECTS-----------
+\section{Projects}
+    \resumeSubHeadingListStart
+      \resumeProjectHeading
+          {\textbf{Brain} $|$ \emph{Python, TypeScript}}{}
+          \resumeItemListStart
+            \resumeItem{Markdown vault with wikilinks and tags, plus a CLI, a web graph, and an MCP server}
+            \resumeItem{Capture turns pasted text, URLs, or screenshots into notes}
+            \resumeItem{Runs locally, with Ollama by default, or Groq or Gemini}
+          \resumeItemListEnd
+      \resumeProjectHeading
+          {\textbf{NaučMěTo} $|$ \emph{Next.js, TypeScript, Supabase}}{}
+          \resumeItemListStart
+            \resumeItem{Upload a PDF, slides, or notes and get a quiz, a cheat sheet, and flashcards from the file}
+            \resumeItem{Notes and a workspace sit with each document}
+            \resumeItem{Supabase handles auth, storage, and the database}
+          \resumeItemListEnd
+      \resumeProjectHeading
+          {\textbf{Plavecká škola Lavia} $|$ \emph{Next.js, TypeScript}}{}
+          \resumeItemListStart
+            \resumeItem{Public site for Plavecká škola Lavia at plavanilaviabrno.cz}
+            \resumeItem{Next.js on Vercel, with season content stored in the repository}
+            \resumeItem{Staff edit that content in the admin page; a save commits to GitHub and Vercel rebuilds}
+          \resumeItemListEnd
+      \resumeProjectHeading
+          {\textbf{Strakatá turistika} $|$ \emph{Flutter, Dart}}{Jan. 2025 -- Present}
+          \resumeItemListStart
+            \resumeItem{Flutter application for Strakatá turistika, built around GPS}
+            \resumeItem{Listed on LinkedIn as an active project since January 2025}
+          \resumeItemListEnd
+      \resumeProjectHeading
+          {\textbf{Create Filip App} $|$ \emph{JavaScript, Next.js, Tailwind CSS}}{}
+          \resumeItemListStart
+            \resumeItem{Scaffolds Next.js with the App Router, TypeScript, and Tailwind CSS}
+            \resumeItem{Interactive setup for components, themes, and the package manager}
+            \resumeItem{Published to run with npx create-filip-app}
+          \resumeItemListEnd
+    \resumeSubHeadingListEnd
+
+
+%-----------PROGRAMMING SKILLS-----------
+\section{Technical Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{Languages}{: Python, TypeScript, Dart} \\
+     \textbf{Frameworks}{: Next.js, React, Flutter} \\
+     \textbf{Developer Tools}{: Git, Linux, Supabase, Tailwind CSS}
+    }}
+ \end{itemize}
+
+
+%-------------------------------------------
+\end{document}

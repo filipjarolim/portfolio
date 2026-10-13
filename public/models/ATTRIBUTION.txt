@@ -1,0 +1,13 @@
+MacBook Air M2
+Author: rtql8d (https://sketchfab.com/rtql8d)
+Source: https://sketchfab.com/3d-models/macbook-air-m2-786fa23d402a4f90ae36c4168997f9cc
+License: Creative Commons Attribution 4.0 International
+https://creativecommons.org/licenses/by/4.0/
+The GLB used here is that model. A public copy had aluminium roughness set to 0.5 and keyboard roughness set to 0.75. Geometry is unchanged.
+
+Apple iPhone 15 Pro Max Black
+Author: polyman Studio (https://sketchfab.com/Polyman_3D)
+Source: https://sketchfab.com/3d-models/apple-iphone-15-pro-max-black-df17520841214c1792fb8a44c6783ee7
+License: Creative Commons Attribution 4.0 International
+https://creativecommons.org/licenses/by/4.0/
+64.2k triangles, 39.1k vertices. Draco-compressed Sketchfab export.

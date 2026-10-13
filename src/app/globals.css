@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  background: #fff;
+  color: #000;
+  color-scheme: light;
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(4.5rem + env(safe-area-inset-top));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+button,
+a {
+  touch-action: manipulation;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tap {
+    transition:
+      transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .tap:active {
+    transform: scale(0.975);
+  }
+
+  .tone {
+    transition:
+      background-color 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .slide {
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .reveal {
+    transition:
+      grid-template-rows 340ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .link-draw {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    background-size: 0 1px;
+    transition: background-size 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .link-draw:hover,
+  .link-draw:focus-visible {
+    background-size: 100% 1px;
+  }
+}
+
+body {
+  background: #fff;
+  color: #000;
+  font-family: var(--font-sans), Helvetica, Arial, sans-serif;
+  overflow-x: clip;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+::selection {
+  background: #000;
+  color: #fff;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 3px;
+}
+
+.screen-readme .anchor {
+  display: none;
+}
+
+.screen-readme h1,
+.screen-readme h2,
+.screen-readme h3 {
+  margin-top: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.screen-readme h1 {
+  font-size: 1.75rem;
+}
+
+.screen-readme h2 {
+  font-size: 1.35rem;
+}
+
+.screen-readme p,
+.screen-readme ul,
+.screen-readme ol,
+.screen-readme pre {
+  margin-top: 0.75rem;
+}
+
+.screen-readme ul,
+.screen-readme ol {
+  padding-left: 1.25rem;
+}
+
+.screen-readme li + li {
+  margin-top: 0.35rem;
+}
+
+.screen-readme a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.screen-readme pre,
+.screen-readme code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.85em;
+}
+
+.screen-readme pre {
+  overflow-x: auto;
+  border: 1px solid #000;
+  padding: 0.75rem 1rem;
+}
+
+.screen-readme img {
+  max-width: 100%;
+  height: auto;
+}
