@@ -1,0 +1,107 @@
+{
+  "headline": "Cybersecurity and mobile apps.",
+  "intro": "I study cybersecurity at the Faculty of Informatics, Masaryk University. The projects here are the software I ship now, on the web and on a phone. The work ahead is security, and more mobile apps.",
+  "note": "Open to entry-level roles, research projects, and internships across Cybersecurity, Data Analysis, and Technical Product Design.",
+  "focus": [
+    "Cybersecurity",
+    "Mobile apps"
+  ],
+  "practice": "I use Cursor heavily for coding. Agents take the repetitive work. I decide what stays, and I review what ships.",
+  "likes": [
+    "Travelling",
+    "Photography",
+    "Gym"
+  ],
+  "skills": [
+    {
+      "label": "Languages",
+      "value": "Python, TypeScript, Dart"
+    },
+    {
+      "label": "Frameworks",
+      "value": "Next.js, React, Flutter"
+    },
+    {
+      "label": "Tools",
+      "value": "Git, Linux, Supabase, Tailwind CSS, Cursor"
+    }
+  ],
+  "projectOrder": [
+    "brainCore",
+    "Nauc-Me-To",
+    "plavanilavia",
+    "Strakata-Turistika-ANDROID",
+    "create-filip-app"
+  ],
+  "projects": {
+    "brainCore": {
+      "title": "Brain",
+      "summary": "Local AI second brain: a Markdown vault, a CLI, a web graph, and an MCP server, all on your machine.",
+      "intro": "Brain is a local second brain. The vault, the command line, the web graph, and the MCP server stay on the machine. Paste text, a link, or a screenshot and it becomes a note.",
+      "bullets": [
+        "Markdown vault with wikilinks and tags, plus a CLI, a web graph, and an MCP server.",
+        "Capture turns pasted text, URLs, or screenshots into notes.",
+        "Runs locally, with Ollama by default, or Groq or Gemini."
+      ],
+      "tags": [
+        "Web"
+      ],
+      "hidden": false
+    },
+    "Nauc-Me-To": {
+      "title": "NaučMěTo",
+      "summary": "Upload study material and get a quiz, a cheat sheet, and flashcards generated from it.",
+      "intro": "NaučMěTo takes a PDF, slides, or notes and turns them into a quiz, a cheat sheet, and flashcards. Each file keeps its notes and a workspace. Supabase handles the account, the files, and the database.",
+      "bullets": [
+        "Upload a PDF, slides, or notes and get a quiz, a cheat sheet, and flashcards from the file.",
+        "Notes and a workspace sit with each document.",
+        "Supabase handles auth, storage, and the database."
+      ],
+      "tags": [
+        "Web"
+      ],
+      "hidden": false
+    },
+    "plavanilavia": {
+      "title": "Plavecká škola Lavia",
+      "summary": "The school site at plavanilaviabrno.cz. Next.js, no database, hosted on Vercel.",
+      "intro": "The site for Plavecká škola Lavia. The season lives in the repository, staff edit it in the admin, and a save commits to GitHub so Vercel can rebuild.",
+      "bullets": [
+        "Public site for Plavecká škola Lavia at plavanilaviabrno.cz.",
+        "Next.js on Vercel, with season content stored in the repository.",
+        "Staff edit that content in the admin page; a save commits to GitHub and Vercel rebuilds."
+      ],
+      "tags": [
+        "Web"
+      ],
+      "hidden": false
+    },
+    "Strakata-Turistika-ANDROID": {
+      "title": "Strakatá turistika",
+      "summary": "Flutter app for Strakatá turistika, built around GPS.",
+      "intro": "Strakatá turistika is a Flutter app built around GPS. It is the mobile work on this page, active since January 2025.",
+      "bullets": [
+        "Flutter application for Strakatá turistika, built around GPS.",
+        "Listed on LinkedIn as an active project since January 2025."
+      ],
+      "tags": [
+        "Mobile"
+      ],
+      "hidden": false
+    },
+    "create-filip-app": {
+      "title": "Create Filip App",
+      "summary": "CLI that scaffolds a Next.js app with TypeScript and Tailwind CSS.",
+      "intro": "Create Filip App scaffolds Next.js with the App Router, TypeScript, and Tailwind CSS. Setup asks about components, the theme, and the package manager, then runs with npx create-filip-app.",
+      "bullets": [
+        "Scaffolds Next.js with the App Router, TypeScript, and Tailwind CSS.",
+        "Interactive setup for components, themes, and the package manager.",
+        "Published to run with npx create-filip-app."
+      ],
+      "tags": [
+        "Web"
+      ],
+      "hidden": false
+    }
+  }
+}
