@@ -1,6 +1,6 @@
 {
   "headline": "Cybersecurity and mobile apps.",
-  "intro": "I study cybersecurity at the Faculty of Informatics, Masaryk University. The projects here are the software I ship now, on the web and on a phone. The work ahead is security, and more mobile apps.",
+  "intro": "The projects here are the software I ship now, on the web and on a phone.",
   "note": "Open to entry-level roles, research projects, and internships across Cybersecurity, Data Analysis, and Technical Product Design.",
   "focus": [
     "Cybersecurity",
@@ -31,7 +31,7 @@
     "Nauc-Me-To",
     "plavanilavia",
     "Strakata-Turistika-ANDROID",
-    "create-filip-app"
+    "perimeter"
   ],
   "projects": {
     "brainCore": {
@@ -78,28 +78,30 @@
     },
     "Strakata-Turistika-ANDROID": {
       "title": "Strakatá turistika",
-      "summary": "Flutter app for Strakatá turistika, built around GPS.",
-      "intro": "Strakatá turistika is a Flutter app built around GPS. It is the mobile work on this page, active since January 2025.",
+      "summary": "A Flutter GPS app and a separate website for the same season.",
+      "intro": "Strakatá turistika is a phone app and a website. The Flutter repository ships the GPS app for Android and iOS. The website is a second repository, for trips, GPX files, and the season board.",
       "bullets": [
-        "Flutter application for Strakatá turistika, built around GPS.",
-        "Listed on LinkedIn as an active project since January 2025."
+        "Flutter application for Android and iOS, built around GPS.",
+        "The website is a second repository: trips, GPX files, scoring, and the public board.",
+        "Listed on Google Play, and on LinkedIn as active since January 2025."
       ],
       "tags": [
+        "Web",
         "Mobile"
       ],
       "hidden": false
     },
-    "create-filip-app": {
-      "title": "Create Filip App",
-      "summary": "CLI that scaffolds a Next.js app with TypeScript and Tailwind CSS.",
-      "intro": "Create Filip App scaffolds Next.js with the App Router, TypeScript, and Tailwind CSS. Setup asks about components, the theme, and the package manager, then runs with npx create-filip-app.",
+    "perimeter": {
+      "title": "Perimeter",
+      "summary": "A desk that reads the security headers of the sites on this page.",
+      "intro": "Perimeter is a small security desk for the sites already on this page. It reads each response and says, in plain language, what the browser is being told.",
       "bullets": [
-        "Scaffolds Next.js with the App Router, TypeScript, and Tailwind CSS.",
-        "Interactive setup for components, themes, and the package manager.",
-        "Published to run with npx create-filip-app."
+        "Reads this portfolio, Plavecká škola Lavia, and Strakatá turistika.",
+        "Shows HTTPS, framing, content type, referrer policy, and permissions.",
+        "Stays on that allowlist."
       ],
       "tags": [
-        "Web"
+        "Security"
       ],
       "hidden": false
     }

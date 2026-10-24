@@ -39,8 +39,12 @@ export const certification = {
 export const skills = [
   { label: "Languages", value: "Python, TypeScript, Dart" },
   { label: "Frameworks", value: "Next.js, React, Flutter" },
-  { label: "Tools", value: "Git, Linux, Supabase, Tailwind CSS" },
+  { label: "Tools", value: "Git, Linux, Supabase, Tailwind CSS, Cursor" },
 ] as const;
+
+/** How he actually writes code. */
+export const practice =
+  "I use Cursor heavily for coding. Agents take the repetitive work. I decide what stays, and I review what ships.";
 
 /** Things he actually does outside of school and projects. */
 export const likes = ["Travelling", "Photography", "Gym"] as const;
@@ -54,6 +58,18 @@ export const experience: {
   bullets: string[];
 }[] = [];
 
+export type ProjectSource = {
+  label: string;
+  href: string;
+};
+
+/** What a device shows. Two surfaces let one project be a site and an app. */
+export type ProjectSurface = {
+  device: "macbook" | "iphone";
+  label: string;
+  src: string;
+};
+
 export type SelectedRepo = {
   repo: string;
   title: string;
@@ -62,6 +78,18 @@ export type SelectedRepo = {
   preferLiveDescription?: boolean;
   stack: string;
   site?: string;
+  /**
+   * Public GitHub repo used for stars and the last update.
+   * Null when the project has no public repository. Defaults to `repo`.
+   */
+  githubRepo?: string | null;
+  /** Extra places this project lives: a second repository, a store, a site. */
+  sources?: ProjectSource[];
+  /**
+   * What each device loads. Omit to show /screen/[repo] on both.
+   * A native app cannot be framed, so its phone surface is a page of real screenshots.
+   */
+  surfaces?: ProjectSurface[];
   /**
    * What the device screen loads. Set when the public site refuses to be framed.
    * Otherwise the screen shows /screen/[repo].
@@ -114,25 +142,40 @@ export const selectedRepos: SelectedRepo[] = [
   {
     repo: "Strakata-Turistika-ANDROID",
     title: "Strakatá turistika",
-    summary: "Flutter app for Strakatá turistika, built around GPS.",
-    stack: "Flutter, Dart",
+    summary: "A Flutter GPS app and a separate website for the same season.",
+    stack: "Flutter, Dart, Next.js",
+    githubRepo: "Strakata-Turistika-ANDROID",
+    site: "https://strakataturistika.vercel.app",
     dates: "Jan 2025 — Present",
+    sources: [
+      { label: "App", href: "https://github.com/filipjarolim/Strakata-Turistika-ANDROID" },
+      { label: "Web", href: "https://github.com/filipjarolim/Strakata-Turistika-WEB" },
+      { label: "Site", href: "https://strakataturistika.vercel.app" },
+      {
+        label: "Play",
+        href: "https://play.google.com/store/apps/details?id=cz.strakata.turistika.strakataturistikaandroidapp",
+      },
+    ],
+    surfaces: [
+      { device: "macbook", label: "Web", src: "/embed/strakata" },
+      { device: "iphone", label: "App", src: "/view/strakata" },
+    ],
     bullets: [
-      "Flutter application for Strakatá turistika, built around GPS.",
-      "Listed on LinkedIn as an active project since January 2025.",
+      "Flutter application for Android and iOS, built around GPS.",
+      "The website is a second repository: trips, GPX files, scoring, and the public board.",
+      "Listed on Google Play, and on LinkedIn as active since January 2025.",
     ],
   },
   {
-    repo: "create-filip-app",
-    title: "Create Filip App",
-    summary:
-      "CLI that scaffolds a Next.js app with TypeScript and Tailwind CSS.",
-    preferLiveDescription: true,
-    stack: "JavaScript, Next.js, Tailwind CSS",
+    repo: "perimeter",
+    title: "Perimeter",
+    summary: "A desk that reads the security headers of the sites on this page.",
+    stack: "TypeScript",
+    githubRepo: null,
     bullets: [
-      "Scaffolds Next.js with the App Router, TypeScript, and Tailwind CSS.",
-      "Interactive setup for components, themes, and the package manager.",
-      "Published to run with npx create-filip-app.",
+      "Reads this portfolio, Plavecká škola Lavia, and Strakatá turistika.",
+      "Shows HTTPS, framing, content type, referrer policy, and permissions.",
+      "Stays on that allowlist.",
     ],
   },
 ];

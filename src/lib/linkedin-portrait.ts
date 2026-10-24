@@ -1,5 +1,5 @@
-import { decode, encode } from "jpeg-js";
-import { cacheLife } from "next/cache";
+import { decode } from "jpeg-js";
+import { cacheLife, cacheTag } from "next/cache";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { githubUser, links } from "@/content/selection";
@@ -64,68 +64,29 @@ function correlation(
   return score / (left.norm * right.norm);
 }
 
-/**
- * LinkedIn publishes a crop. When GitHub still has that same picture at a
- * higher resolution, return the matching region instead of the small file.
- */
-function sharperCopy(linkedinBytes: Uint8Array, githubBytes: Uint8Array): Uint8Array | null {
-  const linkedin = decodeImage(linkedinBytes);
-  const github = decodeImage(githubBytes);
-  if (!linkedin || !github || github.width <= linkedin.width) return null;
+/** True when both files are the same profile picture, whatever their size. */
+function samePicture(leftBytes: Uint8Array, rightBytes: Uint8Array) {
+  const left = decodeImage(leftBytes);
+  const right = decodeImage(rightBytes);
+  if (!left || !right) return false;
+  const score = correlation(
+    normalized(left, 0, 0, left.width, left.height),
+    normalized(right, 0, 0, right.width, right.height),
+  );
+  return score >= 0.72;
+}
 
-  const target = normalized(linkedin, 0, 0, linkedin.width, linkedin.height);
-  let best = { score: -1, scale: 1, ox: 0, oy: 0 };
-
-  const consider = (scale: number, ox: number, oy: number) => {
-    const width = github.width * scale;
-    const height = github.height * scale;
-    const score = correlation(
-      target,
-      normalized(
-        github,
-        ox * github.width,
-        oy * github.height,
-        ox * github.width + width,
-        oy * github.height + height,
-      ),
-    );
-    if (score > best.score) best = { score, scale, ox, oy };
-  };
-
-  for (let scale = 0.55; scale <= 1.001; scale += 0.1) {
-    for (let oy = 0; oy <= 1 - scale + 0.001; oy += 0.1) {
-      for (let ox = 0; ox <= 1 - scale + 0.001; ox += 0.1) consider(scale, ox, oy);
-    }
-  }
-  const scaleMin = Math.max(0.5, best.scale - 0.1);
-  const scaleMax = Math.min(1, best.scale + 0.1);
-  for (let scale = scaleMin; scale <= scaleMax + 0.001; scale += 0.02) {
-    const oyMin = Math.max(0, best.oy - 0.1);
-    const oyMax = Math.min(1 - scale, best.oy + 0.1);
-    for (let oy = oyMin; oy <= oyMax + 0.001; oy += 0.02) {
-      const oxMin = Math.max(0, best.ox - 0.1);
-      const oxMax = Math.min(1 - scale, best.ox + 0.1);
-      for (let ox = oxMin; ox <= oxMax + 0.001; ox += 0.02) consider(scale, ox, oy);
-    }
-  }
-
-  if (best.score < 0.75) return null;
-  if (best.scale >= 0.96) return githubBytes;
-
-  const size = Math.max(1, Math.round(Math.min(github.width, github.height) * best.scale));
-  const x = Math.min(github.width - size, Math.max(0, Math.round(best.ox * github.width)));
-  const y = Math.min(github.height - size, Math.max(0, Math.round(best.oy * github.height)));
-  const pixels = new Uint8Array(size * size * 4);
-  for (let row = 0; row < size; row++) {
-    const start = ((y + row) * github.width + x) * 4;
-    pixels.set(github.data.subarray(start, start + size * 4), row * size * 4);
-  }
-  return new Uint8Array(encode({ data: pixels, width: size, height: size }, 92).data);
+function largerPicture(leftBytes: Uint8Array, rightBytes: Uint8Array) {
+  const left = decodeImage(leftBytes);
+  const right = decodeImage(rightBytes);
+  if (!left || !right) return leftBytes;
+  return left.width * left.height >= right.width * right.height ? leftBytes : rightBytes;
 }
 
 async function fetchImage(url: string, referer?: string): Promise<Uint8Array | null> {
   try {
     const response = await fetch(url, {
+      cache: "no-store",
       headers: {
         Accept: "image/jpeg,image/*",
         "User-Agent": "Mozilla/5.0",
@@ -143,6 +104,8 @@ async function fetchImage(url: string, referer?: string): Promise<Uint8Array | n
 
 async function linkedinPortrait(): Promise<Uint8Array | null> {
   const response = await fetch(links.linkedin, {
+    cache: "no-store",
+    redirect: "follow",
     headers: {
       Accept: "text/html",
       "User-Agent": "Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)",
@@ -170,18 +133,7 @@ async function linkedinPortrait(): Promise<Uint8Array | null> {
 }
 
 async function githubPortrait(): Promise<Uint8Array | null> {
-  const response = await fetch(`https://api.github.com/users/${githubUser}`, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      "User-Agent": "filip-folio",
-    },
-  });
-  if (!response.ok) return null;
-  const data = (await response.json()) as { avatar_url?: string };
-  if (!data.avatar_url) return null;
-  const avatar = new URL(data.avatar_url);
-  avatar.searchParams.set("s", "800");
-  return fetchImage(avatar.toString());
+  return fetchImage(`https://github.com/${githubUser}.png?size=800`);
 }
 
 async function fallbackPortrait(): Promise<PortraitImage> {
@@ -190,26 +142,25 @@ async function fallbackPortrait(): Promise<PortraitImage> {
 }
 
 /**
- * LinkedIn is the photo that should change when the profile picture changes.
- * GitHub currently hosts the same picture at a higher resolution, so that file
- * is used only while the two pictures still match.
+ * The photo is the live profile picture.
+ * LinkedIn wins when the two accounts show different pictures.
+ * When they show the same one, the larger file is used.
  */
 export async function getPortraitImage(): Promise<PortraitImage> {
   "use cache";
   cacheLife("minutes");
+  cacheTag("portrait");
 
   try {
     const [linkedin, github] = await Promise.all([linkedinPortrait(), githubPortrait()]);
 
     if (linkedin && github) {
-      const sharp = sharperCopy(linkedin, github);
-      if (sharp) return pack(sharp);
-      return pack(linkedin);
+      return pack(samePicture(linkedin, github) ? largerPicture(linkedin, github) : linkedin);
     }
     if (linkedin) return pack(linkedin);
     if (github) return pack(github);
   } catch {
-    // The saved file is the same portrait.
+    // The saved file is the last picture that could be fetched.
   }
   return fallbackPortrait();
 }

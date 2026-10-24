@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { tap } from "@/lib/haptic";
+import { confirm, tap } from "@/lib/haptic";
 
 function textEdge(copy: HTMLElement) {
   const range = document.createRange();
@@ -31,6 +31,9 @@ export function HeroIntro({ children }: { children: ReactNode }) {
   const magnetRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
+  const openRef = useRef(false);
+  const suspendRef = useRef(false);
+  openRef.current = open;
 
   useEffect(() => {
     const pin = pinRef.current;
@@ -40,36 +43,136 @@ export function HeroIntro({ children }: { children: ReactNode }) {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (!fine.matches || reduce.matches) return;
 
-    const onMove = (event: PointerEvent) => {
-      const host = magnet.parentElement?.getBoundingClientRect();
-      if (!host) return;
-      const size = magnet.offsetWidth;
-      const cx = host.right - size / 2;
-      const cy = host.top + size / 2;
-      const dx = event.clientX - cx;
-      const dy = event.clientY - cy;
-      const dist = Math.hypot(dx, dy);
-      const reach = size * 0.72;
-      if (dist > reach) {
+    let frame = 0;
+    let running = false;
+    let inside = false;
+    let dirty = true;
+    let seenOpen = false;
+    let size = magnet.offsetWidth;
+    let rect = magnet.parentElement?.getBoundingClientRect() ?? null;
+    const pointer = { x: 0, y: 0 };
+    const pos = { x: 0, y: 0 };
+    const vel = { x: 0, y: 0 };
+    const target = { x: 0, y: 0 };
+
+    const measure = () => {
+      size = magnet.offsetWidth;
+      rect = magnet.parentElement?.getBoundingClientRect() ?? null;
+    };
+
+    const tick = () => {
+      if (suspendRef.current) {
+        pos.x = 0;
+        pos.y = 0;
+        vel.x = 0;
+        vel.y = 0;
         magnet.style.transform = "";
+        running = false;
         return;
       }
-      const pull = (1 - dist / reach) * 0.42;
-      const x = Math.min(22, Math.max(-22, dx * pull));
-      const y = Math.min(22, Math.max(-22, dy * pull));
-      magnet.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0)`;
+      if (inside && !openRef.current && dirty) {
+        measure();
+        dirty = false;
+      }
+      if (!inside || !rect) {
+        target.x = 0;
+        target.y = 0;
+      } else {
+        const cx = rect.right - size / 2;
+        const cy = rect.top + size / 2;
+        const dx = pointer.x - cx;
+        const dy = pointer.y - cy;
+        const dist = Math.hypot(dx, dy);
+        const reach = size * 0.72;
+        if (dist > reach) {
+          target.x = 0;
+          target.y = 0;
+        } else {
+          const pull = (1 - dist / reach) * 0.42;
+          target.x = Math.min(22, Math.max(-22, dx * pull));
+          target.y = Math.min(22, Math.max(-22, dy * pull));
+        }
+      }
+      vel.x += (target.x - pos.x) * 0.3;
+      vel.y += (target.y - pos.y) * 0.3;
+      vel.x *= 0.6;
+      vel.y *= 0.6;
+      pos.x += vel.x;
+      pos.y += vel.y;
+      const settled =
+        Math.hypot(vel.x, vel.y) < 0.04 && Math.hypot(target.x - pos.x, target.y - pos.y) < 0.04;
+      if (settled) {
+        pos.x = target.x;
+        pos.y = target.y;
+        vel.x = 0;
+        vel.y = 0;
+        magnet.style.transform =
+          target.x || target.y ? `translate3d(${target.x.toFixed(2)}px, ${target.y.toFixed(2)}px, 0)` : "";
+        running = false;
+        return;
+      }
+      magnet.style.transform = `translate3d(${pos.x.toFixed(2)}px, ${pos.y.toFixed(2)}px, 0)`;
+      frame = requestAnimationFrame(tick);
+    };
+
+    const start = () => {
+      if (running) return;
+      running = true;
+      frame = requestAnimationFrame(tick);
+    };
+
+    const onMove = (event: PointerEvent) => {
+      if (seenOpen !== openRef.current) {
+        seenOpen = openRef.current;
+        dirty = true;
+      }
+      inside = true;
+      pointer.x = event.clientX;
+      pointer.y = event.clientY;
+      start();
+    };
+    const onScroll = () => {
+      dirty = true;
+      if (inside) start();
     };
     const onLeave = () => {
-      magnet.style.transform = "";
+      inside = false;
+      start();
     };
 
     pin.addEventListener("pointermove", onMove);
     pin.addEventListener("pointerleave", onLeave);
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
+      cancelAnimationFrame(frame);
       pin.removeEventListener("pointermove", onMove);
       pin.removeEventListener("pointerleave", onLeave);
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", onScroll);
     };
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const shut = () => {
+      if (openRef.current) buttonRef.current?.click();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") shut();
+    };
+    const onPointer = (event: PointerEvent) => {
+      const magnet = magnetRef.current;
+      if (magnet && event.target instanceof Node && magnet.contains(event.target)) return;
+      shut();
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onPointer);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointer);
+    };
+  }, [open]);
 
   useLayoutEffect(() => {
     const button = buttonRef.current;
@@ -95,10 +198,10 @@ export function HeroIntro({ children }: { children: ReactNode }) {
     const button = buttonRef.current;
     if (!pin || !copy || !magnet || !button) return;
     const apply = () => {
-      const closed = Number(button.dataset.closed) || button.offsetWidth;
+      const closed = button.offsetWidth;
+      if (closed < 1) return;
       const size = circleSize(pin, copy, closed);
-      magnet.style.setProperty("--open-size", `${size}px`);
-      button.style.setProperty("--from-s", String(closed / size));
+      button.style.setProperty("--open-s", String(size / closed));
     };
     apply();
     const observer = new ResizeObserver(apply);
@@ -107,45 +210,76 @@ export function HeroIntro({ children }: { children: ReactNode }) {
     return () => observer.disconnect();
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      toggle();
+    };
+    const onPointer = (event: PointerEvent) => {
+      const button = buttonRef.current;
+      if (button && event.target instanceof Node && button.contains(event.target)) return;
+      toggle();
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onPointer);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointer);
+    };
+  }, [open]);
+
   function toggle() {
     const button = buttonRef.current;
     const pin = pinRef.current;
     const copy = copyRef.current;
     const magnet = magnetRef.current;
     if (!button || !pin || !copy || !magnet) return;
-    tap(12);
     if (!open) {
+      confirm();
       const closed = button.offsetWidth;
       const size = circleSize(pin, copy, closed);
-      button.dataset.closed = String(closed);
-      magnet.style.setProperty("--open-size", `${size}px`);
-      button.style.setProperty("--from-s", String(closed / size));
+      suspendRef.current = true;
+      magnet.style.transform = "";
+      button.style.setProperty("--open-s", String(size / Math.max(closed, 1)));
       setOpen(true);
       return;
     }
+    tap(10);
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      suspendRef.current = false;
       setOpen(false);
       return;
     }
     button.classList.add("is-from");
-    const finish = (event: TransitionEvent) => {
-      if (event.target !== button || event.propertyName !== "transform") return;
+    let done = false;
+    const shut = () => {
+      if (done) return;
+      done = true;
+      window.clearTimeout(backup);
       button.removeEventListener("transitionend", finish);
+      suspendRef.current = false;
       setOpen(false);
     };
+    const finish = (event: TransitionEvent) => {
+      if (event.target !== button || event.propertyName !== "transform") return;
+      shut();
+    };
+    const backup = window.setTimeout(shut, 520);
     button.addEventListener("transitionend", finish);
   }
 
   return (
     <div
       ref={pinRef}
-      className="hero-pin grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 pt-8 sm:gap-8 sm:pt-10"
+      className="hero-pin grid grid-cols-[minmax(0,1fr)_auto] items-start gap-6 pt-16 sm:gap-12 sm:pt-20"
     >
       <div ref={copyRef} className="hero-copy min-w-0">
         {children}
       </div>
-      <div className={`portrait-drift relative${open ? " is-still" : ""}`}>
-        <div className="size-24 sm:size-36 md:size-44 lg:size-52" aria-hidden="true" />
+      <div className="portrait-slot relative">
+        <div className="size-32 sm:size-44 md:size-52 lg:size-60" aria-hidden="true" />
         <div ref={magnetRef} className={`portrait-magnet${open ? " is-open" : ""}`}>
           <button
             ref={buttonRef}

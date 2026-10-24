@@ -9,17 +9,21 @@ export default function Icon() {
       <div
         style={{
           alignItems: "center",
-          background: "#000",
-          color: "#fff",
+          background: "#121820",
           display: "flex",
-          fontSize: 20,
-          fontWeight: 700,
           height: "100%",
           justifyContent: "center",
           width: "100%",
         }}
       >
-        F
+        <div style={{ display: "flex", height: 18, width: 14 }}>
+          <div style={{ background: "#f4f7fb", height: "100%", width: 3 }} />
+          <div style={{ display: "flex", flexDirection: "column", height: "100%", width: 11 }}>
+            <div style={{ background: "#f4f7fb", height: 3, width: "100%" }} />
+            <div style={{ height: 4, width: "100%" }} />
+            <div style={{ background: "#f4f7fb", height: 3, width: 8 }} />
+          </div>
+        </div>
       </div>
     ),
     { ...size },

@@ -3,6 +3,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { CoreSpiral } from "@/components/core-spiral";
 import type { Camera, Mesh, Object3D, PerspectiveCamera } from "three";
 import { Box3, BoxGeometry, Group, Mesh as SolidMesh, MeshStandardMaterial, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -144,6 +145,20 @@ function sealKeyboardDeck(scene: Object3D) {
   plate.name = "keyboard-underside";
   plate.position.set(0, 0, -0.08);
   parent.add(plate);
+}
+
+function tuneTextures(root: Object3D, anisotropy: number) {
+  root.traverse((object) => {
+    const mesh = object as SolidMesh;
+    if (!mesh.isMesh) return;
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const material of materials) {
+      const mat = material as MeshStandardMaterial;
+      if (!mat?.map) continue;
+      mat.map.anisotropy = anisotropy;
+      mat.map.needsUpdate = true;
+    }
+  });
 }
 
 function cssMatrix3d(h: Float64Array) {
@@ -315,7 +330,11 @@ function ProjectedScreen({
     iframe.style.border = "0";
     iframe.style.display = "block";
     iframe.style.background = "#fff";
-    iframe.addEventListener("load", () => sealScreen(iframe));
+    iframe.style.transition = "opacity 180ms linear";
+    iframe.addEventListener("load", () => {
+      sealScreen(iframe);
+      iframe.style.opacity = "1";
+    });
     el.appendChild(iframe);
     layer.appendChild(el);
     parent.appendChild(layer);
@@ -335,7 +354,18 @@ function ProjectedScreen({
     const iframe = el?.querySelector("iframe");
     if (!el || !iframe) return;
     iframe.title = title;
-    if (iframe.getAttribute("src") !== src) iframe.src = src;
+    const previous = iframe.getAttribute("src");
+    if (previous === src) return;
+    if (!previous || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      iframe.src = src;
+      iframe.style.opacity = "1";
+      return;
+    }
+    iframe.style.opacity = "0";
+    const timer = window.setTimeout(() => {
+      iframe.src = src;
+    }, 160);
+    return () => window.clearTimeout(timer);
   }, [src, title]);
 
   useLayoutEffect(() => {
@@ -461,6 +491,9 @@ function Model({
 }) {
   const spec = devices[kind];
   const rigRef = useRef<Group>(null);
+  const interactiveRef = useRef(interactive);
+  interactiveRef.current = interactive;
+  const gl = useThree((state) => state.gl);
   const gltf = useGLTF(spec.model, spec.draco ? DRACO : false);
   const scene = useMemo(() => {
     const cloned = gltf.scene.clone(true);
@@ -482,7 +515,11 @@ function Model({
   }, [onMounted, scene]);
 
   useLayoutEffect(() => {
-    const pose = spec.rotation;
+    tuneTextures(scene, gl.capabilities.getMaxAnisotropy());
+  }, [gl, scene]);
+
+  useLayoutEffect(() => {
+    const pose = interactiveRef.current ? spec.front : spec.rotation;
     rigRef.current?.rotation.set(pose[0], pose[1], pose[2]);
   }, [spec]);
 
@@ -572,6 +609,7 @@ function CameraTune({ fov }: { fov: number }) {
 
 const fitCenter = new Vector3();
 const fitSizeVec = new Vector3();
+const fitBox = new Box3();
 const frontDir = new Vector3(0, 0.04, 1).normalize();
 const angleDir = new Vector3(0, 0.4, 5).normalize();
 
@@ -582,7 +620,7 @@ function fitCamera(
   direction: Vector3,
 ) {
   rig.updateWorldMatrix(true, true);
-  const box = new Box3().setFromObject(rig);
+  const box = fitBox.setFromObject(rig);
   if (box.isEmpty()) return;
   const center = box.getCenter(fitCenter);
   const boxSize = box.getSize(fitSizeVec);
@@ -609,6 +647,7 @@ function StagePose({ kind, straight }: { kind: DeviceKind; straight: boolean }) 
   const rest = useRef<{ azimuth: number; polar: number } | null>(null);
   const sized = useRef({ w: 0, h: 0 });
   const reduce = useRef(false);
+  const aim = useRef(new Vector3().copy(angleDir));
 
   useEffect(() => {
     reduce.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -618,7 +657,7 @@ function StagePose({ kind, straight }: { kind: DeviceKind; straight: boolean }) 
     rest.current = null;
   }, [kind, straight]);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const rig = scene.getObjectByName("device-rig");
     if (!rig || !controls) return;
     if (sized.current.w !== size.width || sized.current.h !== size.height) {
@@ -627,21 +666,26 @@ function StagePose({ kind, straight }: { kind: DeviceKind; straight: boolean }) 
     }
     const spec = devices[kind];
     const target = straight ? spec.front : spec.rotation;
-    const step = reduce.current ? 1 : 0.18;
+    const step = reduce.current ? 1 : 1 - Math.exp(-Math.min(delta, 0.05) * 8);
     let spinning = false;
     const axes = ["x", "y", "z"] as const;
     for (let i = 0; i < 3; i++) {
-      const delta = target[i] - rig.rotation[axes[i]];
-      if (Math.abs(delta) > 0.001) {
-        rig.rotation[axes[i]] += delta * step;
+      const deltaAng = Math.atan2(
+        Math.sin(target[i] - rig.rotation[axes[i]]),
+        Math.cos(target[i] - rig.rotation[axes[i]]),
+      );
+      if (Math.abs(deltaAng) > 0.001) {
+        rig.rotation[axes[i]] += deltaAng * step;
         spinning = true;
       } else {
         rig.rotation[axes[i]] = target[i];
       }
     }
-    const direction = straight ? frontDir : angleDir;
+    const goal = straight ? frontDir : angleDir;
     if (spinning || !rest.current) {
-      fitCamera(camera, controls, rig, direction);
+      aim.current.lerp(goal, step);
+      if (aim.current.lengthSq() > 1e-8) aim.current.normalize();
+      fitCamera(camera, controls, rig, aim.current);
       if (!spinning) {
         rest.current = {
           azimuth: controls.getAzimuthalAngle(),
@@ -713,7 +757,9 @@ export function DeviceStage({
   const [generation, setGeneration] = useState(0);
   const [ready, setReady] = useState(false);
   const [live, setLive] = useState(true);
-  const frame = `${kind}:${generation}`;
+  const [shown, setShown] = useState(kind);
+  const [veil, setVeil] = useState(false);
+  const frame = `${shown}:${generation}`;
 
   useEffect(() => {
     const node = holder.current;
@@ -726,32 +772,60 @@ export function DeviceStage({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (kind === shown) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setShown(kind);
+      return;
+    }
+    setVeil(true);
+    const wait = window.setTimeout(() => setShown(kind), 220);
+    return () => window.clearTimeout(wait);
+  }, [kind, shown]);
+
+  useEffect(() => {
+    if (!veil || kind !== shown) return;
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => setVeil(false));
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
+  }, [veil, kind, shown]);
+
   return (
-    <div ref={holder} className={`h-full w-full isolate ${interactive ? "" : "pointer-events-none"}`}>
+    <div ref={holder} className={`relative h-full w-full isolate ${interactive ? "" : "pointer-events-none"}`}>
+    {ready ? null : (
+      <div className="stage-wait">
+        <CoreSpiral />
+      </div>
+    )}
     <Canvas
-      className={`h-full w-full ${ready ? "" : "invisible"} ${interactive ? "" : "pointer-events-none"}`}
+      className={`stage-fade h-full w-full ${ready && !veil ? "opacity-100" : "opacity-0"} ${interactive ? "" : "pointer-events-none"}`}
       frameloop={live ? "demand" : "never"}
-      dpr={[1, 1.25]}
+      dpr={[1, 1.75]}
       gl={{ alpha: true, antialias: true, powerPreference: "high-performance", stencil: false }}
-      camera={{ fov: kind === "iphone" ? 28 : 32, position: [0, 0.4, 5] }}
+      camera={{ fov: shown === "iphone" ? 28 : 32, position: [0, 0.4, 5] }}
     >
       <PointerGate interactive={interactive} />
-      <CameraTune fov={kind === "iphone" ? 28 : 32} />
-      <Settle token={`${kind}:${src}:${interactive}`} active={live || interactive} />
+      <CameraTune fov={shown === "iphone" ? 28 : 32} />
+      <Settle token={`${shown}:${src}:${interactive}`} active={live || interactive} />
+      <Model key={shown} kind={shown} src={src} title={title} interactive={interactive} onMounted={setGeneration} />
       <PlaceCamera token={frame} straight={interactive} onPlaced={setReady} />
-      <StagePose kind={kind} straight={interactive} />
+      <StagePose kind={shown} straight={interactive} />
       <ambientLight intensity={0.85} />
       <directionalLight position={[3, 5, 4]} intensity={2.6} />
       <directionalLight position={[-3, 2, 1]} intensity={0.55} />
-      <Model kind={kind} src={src} title={title} interactive={interactive} onMounted={setGeneration} />
       <OrbitControls
         makeDefault
         enabled={interactive}
         enablePan={false}
         enableZoom={false}
         enableDamping
-        dampingFactor={0.28}
-        rotateSpeed={0.85}
+        dampingFactor={0.16}
+        rotateSpeed={0.7}
       />
     </Canvas>
     </div>

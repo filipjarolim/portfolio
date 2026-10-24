@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
-import { fallbackProfile, links, linkedinIntro } from "@/content/selection";
+import { fallbackProfile, links } from "@/content/selection";
+import { getSiteCopy } from "@/lib/site-copy";
 import { getGithubProfile } from "@/lib/github";
 import { getSiteUrl } from "@/lib/site";
 import "./globals.css";
@@ -19,16 +21,18 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#ffffff",
-  colorScheme: "light",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#121820" },
+  ],
+  colorScheme: "light dark",
 };
 
 export async function generateMetadata(): Promise<Metadata> {
   const profile = await getGithubProfile();
+  const copy = await getSiteCopy();
   const name = profile.name || fallbackProfile.name;
-  const description = [profile.bio || fallbackProfile.bio, linkedinIntro]
-    .filter(Boolean)
-    .join(" ");
+  const description = [copy.headline, copy.intro].filter(Boolean).join(" ");
   const site = getSiteUrl();
 
   return {
@@ -81,7 +85,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description,
     },
     formatDetection: { email: false, address: false, telephone: false },
-    appleWebApp: { title: name, statusBarStyle: "default" },
+    appleWebApp: { capable: true, title: name, statusBarStyle: "default" },
   };
 }
 
@@ -91,7 +95,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-white font-sans text-black">{children}</body>
+      <body className="min-h-full bg-white font-sans text-black">
+        <Script id="folio-theme" strategy="beforeInteractive">
+          {`(function(){try{var t=localStorage.getItem("folio-theme");var d=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);var h=document.documentElement;h.classList.toggle("dark",d);h.style.colorScheme=d?"dark":"light";}catch(e){}})();`}
+        </Script>
+        {children}
+      </body>
     </html>
   );
 }

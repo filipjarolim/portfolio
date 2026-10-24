@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { CopyLabel } from "@/components/copy-control";
 import { DeviceStage, type DeviceKind } from "@/components/device-stage";
-import { tap } from "@/lib/haptic";
+import { confirm, copyText, tap } from "@/lib/haptic";
 
 const DEVICE_MODELS = ["/models/macbook-air-m2.glb", "/models/iphone-15-pro-max.glb"];
 
@@ -10,11 +11,12 @@ export type ShowcaseProject = {
   repo: string;
   title: string;
   summary: string;
+  intro: string;
+  tags: string[];
   stack: string;
   meta: string;
-  site: string | null;
-  github: string;
-  screen: string;
+  sources: { label: string; href: string }[];
+  surfaces: { device: DeviceKind; label: string; src: string }[];
 };
 
 const devices: { kind: DeviceKind; label: string; credit: string; creditHref: string }[] = [
@@ -43,10 +45,39 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function SourceLinks({
+  sources,
+  className,
+}: {
+  sources: ShowcaseProject["sources"];
+  className?: string;
+}) {
+  if (sources.length === 0) return null;
+  return (
+    <p className={`flex flex-wrap gap-x-3 gap-y-1 font-mono text-[11px] tracking-[0.04em] ${className ?? ""}`}>
+      {sources.map((item) => (
+        <a
+          key={`${item.label}-${item.href}`}
+          href={item.href}
+          target="_blank"
+          rel="noreferrer"
+          className="link-draw"
+          onClick={() => tap(8)}
+        >
+          {item.label}
+        </a>
+      ))}
+    </p>
+  );
+}
+
 export default function Showcase({ projects }: { projects: ShowcaseProject[] }) {
   const [kind, setKind] = useState<DeviceKind>("macbook");
   const [repo, setRepo] = useState(projects[0]?.repo ?? "");
   const [expanded, setExpanded] = useState(false);
+  const [focus, setFocus] = useState<string | null>(null);
+  const picked = useRef(false);
+  const [copied, setCopied] = useState(false);
   const trackRef = useRef<HTMLElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<HTMLDivElement>(null);
@@ -122,11 +153,30 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
   }
 
   useEffect(() => {
+    const param = new URLSearchParams(window.location.search).get("device");
+    const saved = sessionStorage.getItem("folio-device");
+    if (param === "phone" || (param !== "laptop" && saved === "iphone")) setKind("iphone");
+    else if (param === "laptop" || saved === "macbook") setKind("macbook");
+  }, []);
+
+  useEffect(() => {
+    const close = () => setExpanded(false);
+    window.addEventListener("folio-close-expand", close);
+    return () => window.removeEventListener("folio-close-expand", close);
+  }, []);
+
+  useEffect(() => {
     const sync = () => {
       const match = repoFromHash(projects);
       if (!match) return;
       lock.current = match;
       setRepo(match);
+      const param = new URLSearchParams(window.location.search).get("device");
+      const item = projects.find((project) => project.repo === match);
+      if (!param && !picked.current && item) {
+        const fit = deviceFor(item);
+        if (fit) setKind(fit);
+      }
       scrollToProject(match, "auto");
     };
     sync();
@@ -144,6 +194,12 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
         repoRef.current = next;
         remember(next);
         setRepo(next);
+        const param = new URLSearchParams(window.location.search).get("device");
+        if (!picked.current && !param) {
+          const item = projects.find((project) => project.repo === next);
+          const fit = item ? deviceFor(item) : null;
+          if (fit) setKind(fit);
+        }
       });
     };
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -178,7 +234,7 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
   }, []);
 
   useEffect(() => {
-    const urls = [...DEVICE_MODELS, ...projects.map((project) => project.screen)];
+    const urls = [...DEVICE_MODELS, ...projects.flatMap((project) => project.surfaces.map((surface) => surface.src))];
     let links: HTMLLinkElement[] = [];
     const idle = window.requestIdleCallback ?? ((callback: IdleRequestCallback) => window.setTimeout(callback, 500));
     const cancel =
@@ -226,7 +282,9 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
         setExpanded(false);
         return;
       }
-      if (event.key === "ArrowUp" || event.key === "ArrowDown" || event.key === " " || event.key === "PageUp" || event.key === "PageDown") {
+      const target = event.target;
+      const onControl = target instanceof Element && !!target.closest("button, a, input, textarea");
+      if (!onControl && (event.key === " " || event.key === "PageUp" || event.key === "PageDown")) {
         event.preventDefault();
       }
     };
@@ -267,31 +325,143 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
     };
   }, [projects]);
 
+  const actions = useRef({
+    step: (_delta: number) => {},
+    toggle: () => {},
+    pick: (_index: number) => {},
+  });
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+      const target = event.target;
+      if (target instanceof Element && target.closest("input, textarea, select, [contenteditable], iframe")) return;
+      if (expandedRef.current && (event.key === "ArrowDown" || event.key === "ArrowRight")) {
+        event.preventDefault();
+        actions.current.step(1);
+        return;
+      }
+      if (expandedRef.current && (event.key === "ArrowUp" || event.key === "ArrowLeft")) {
+        event.preventDefault();
+        actions.current.step(-1);
+        return;
+      }
+      if (event.key === "e" || event.key === "E") {
+        event.preventDefault();
+        actions.current.toggle();
+        return;
+      }
+      if (/^[1-9]$/.test(event.key)) {
+        event.preventDefault();
+        actions.current.pick(Number(event.key) - 1);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [projects]);
+
   const project = projects.find((item) => item.repo === repo) ?? projects[0];
   const device = devices.find((item) => item.kind === kind) ?? devices[0];
   if (!project) return null;
+  const surface = project.surfaces.find((item) => item.device === kind) ?? project.surfaces[0];
+  const distinctSurfaces =
+    new Set(project.surfaces.map((item) => item.src)).size > 1 ? project.surfaces : [];
+
+  function revealCard(next: string) {
+    const item = itemRefs.current.get(next);
+    const view = viewRef.current;
+    if (!item || !view || !expandedRef.current) return;
+    const itemBox = item.getBoundingClientRect();
+    const viewBox = view.getBoundingClientRect();
+    if (itemBox.left < viewBox.left) view.scrollLeft -= viewBox.left - itemBox.left;
+    else if (itemBox.right > viewBox.right) view.scrollLeft += itemBox.right - viewBox.right;
+    if (itemBox.top < viewBox.top) view.scrollTop -= viewBox.top - itemBox.top;
+    else if (itemBox.bottom > viewBox.bottom) view.scrollTop += itemBox.bottom - viewBox.bottom;
+  }
+
+  function deviceFor(item: ShowcaseProject) {
+    const tags = item.tags.map((tag) => tag.toLowerCase());
+    const mobile = tags.includes("mobile");
+    const web = tags.includes("web");
+    const distinct = new Set(item.surfaces.map((surface) => surface.src)).size > 1;
+    if (distinct && mobile) return "iphone" as const;
+    if (mobile && !web) return "iphone" as const;
+    if (web && !mobile) return "macbook" as const;
+    return null;
+  }
 
   function select(next: string) {
     tap(10);
     lock.current = next;
     setRepo(next);
+    const item = projects.find((project) => project.repo === next);
+    const fit = item && !picked.current ? deviceFor(item) : null;
+    if (fit) choose(fit);
     remember(next);
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     scrollToProject(next, reduce ? "auto" : "smooth");
+    revealCard(next);
   }
 
-  function choose(next: DeviceKind) {
+  function choose(next: DeviceKind, fromUser = false) {
+    if (fromUser) picked.current = true;
     if (next === kind) return;
-    tap(14);
+    if (fromUser) tap(14);
     setKind(next);
+    sessionStorage.setItem("folio-device", next);
+    const url = new URL(window.location.href);
+    url.searchParams.set("device", next === "iphone" ? "phone" : "laptop");
+    history.replaceState(null, "", url);
   }
+
+  function focusTag(tag: string) {
+    tap(8);
+    const next = focus === tag ? null : tag;
+    setFocus(next);
+    if (!next) return;
+    const current = projects.find((item) => item.repo === repo);
+    const matches = (item: ShowcaseProject) => item.tags.some((value) => value.toLowerCase() === next.toLowerCase());
+    if (current && matches(current)) return;
+    const match = projects.find(matches);
+    if (match) select(match.repo);
+  }
+
+  const tags = [...new Set(projects.flatMap((item) => item.tags))];
+
+  async function copyLink() {
+    const url = new URL(window.location.href);
+    url.hash = repo;
+    url.searchParams.set("device", kind === "iphone" ? "phone" : "laptop");
+    const ok = await copyText(url.toString());
+    if (!ok) return;
+    history.replaceState(null, "", url);
+    confirm();
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1400);
+  }
+
+  function step(delta: number) {
+    const index = projects.findIndex((item) => item.repo === repoRef.current);
+    const next = projects[index + delta];
+    if (next) select(next.repo);
+  }
+
+  actions.current.step = step;
+  actions.current.pick = (index) => {
+    const next = projects[index];
+    if (next) select(next.repo);
+  };
+  actions.current.toggle = () => {
+    confirm();
+    setExpanded((value) => !value);
+  };
 
   return (
     <section
       id="work"
       ref={trackRef}
       aria-labelledby="work-heading"
-      className="work-track"
+      className="work-track fade-in"
       style={{ ["--work-steps" as string]: Math.max(projects.length - 1, 1) }}
     >
       <div ref={pinRef} className={`work-pin${expanded ? " is-expanded" : ""}`}>
@@ -319,7 +489,7 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
                   type="button"
                   role="radio"
                   aria-checked={active}
-                  onClick={() => choose(item.kind)}
+                  onClick={() => choose(item.kind, true)}
                   className={`spring-ink relative z-[1] bg-transparent px-3 py-3 text-left text-sm font-bold ${
                     active ? "text-white" : "text-black"
                   }`}
@@ -332,15 +502,47 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
           <button
             type="button"
             aria-pressed={expanded}
-            onClick={() => {
-              tap(12);
-              setExpanded((value) => !value);
-            }}
-            className="tap shrink-0 border border-black bg-white px-3 py-3 text-sm font-bold"
+            aria-keyshortcuts="e"
+            onClick={() => actions.current.toggle()}
+            className="tap sweep shrink-0 border border-black bg-white px-3 py-3 text-sm font-bold"
           >
             {expanded ? "Close" : "Expand"}
           </button>
+          <button
+            type="button"
+            onClick={copyLink}
+            aria-live="polite"
+            className={`copy-sheen tap shrink-0 border border-black bg-white px-3 py-3 text-sm font-bold ${copied ? "is-copied" : ""}`}
+          >
+            <CopyLabel copied={copied} label="Link" />
+          </button>
       </div>
+      {tags.length > 0 ? (
+        <div className="mb-3 flex shrink-0 flex-wrap gap-2">
+          <button
+            type="button"
+            aria-pressed={focus === null}
+            onClick={() => {
+              tap(8);
+              setFocus(null);
+            }}
+            className={`border border-black px-3 py-2 text-xs font-bold ${focus === null ? "bg-black text-white" : "bg-white"}`}
+          >
+            All
+          </button>
+          {tags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              aria-pressed={focus === tag}
+              onClick={() => focusTag(tag)}
+              className={`border border-black px-3 py-2 text-xs font-bold ${focus === tag ? "bg-black text-white" : "bg-white"}`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div
         className={
@@ -364,20 +566,68 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
             >
               <DeviceStage
                 kind={kind}
-                src={project.screen}
+                src={surface?.src ?? ""}
                 title={`${project.title} on ${device.label}`}
                 interactive={expanded}
               />
             </div>
           </div>
-          <p className="mt-2 shrink-0 font-mono text-[11px] leading-relaxed opacity-25 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100">
-            {device.kind === "macbook" ? "MacBook Air M2" : "iPhone 15 Pro Max"}. Model
-            by{" "}
-            <a href={device.creditHref} target="_blank" rel="noreferrer" className="link-draw">
-              {device.credit}
-            </a>
-            , CC BY 4.0
-          </p>
+          <div className="mt-3 max-w-xl shrink-0">
+            <p className="flex items-baseline justify-between gap-3 text-sm font-bold tracking-tight">
+              <span className="min-w-0">{project.title}</span>
+              <span className="shrink-0 font-mono text-[11px] font-normal text-muted tabular-nums">
+                {String(projects.findIndex((item) => item.repo === project.repo) + 1).padStart(2, "0")}
+                <span className="px-1">/</span>
+                {String(projects.length).padStart(2, "0")}
+              </span>
+            </p>
+            <p className="mt-3 text-base leading-7">{project.intro || project.summary}</p>
+            {project.meta ? (
+              <p className="mt-2 font-mono text-[11px] tracking-[0.02em] text-muted">{project.meta}</p>
+            ) : null}
+            {distinctSurfaces.length > 1 ? (
+              <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-label="Source">
+                {distinctSurfaces.map((item) => {
+                  const active = item.device === kind;
+                  return (
+                    <button
+                      key={item.device}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => choose(item.device, true)}
+                      className={`border border-black px-3 py-2 text-xs font-bold ${active ? "bg-black text-white" : "bg-white"}`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+          {expanded ? <SourceLinks sources={project.sources} className="mt-2 shrink-0" /> : null}
+          <div className="mt-4 flex items-baseline justify-between gap-4">
+            <p className="font-mono text-[11px] text-muted">1–{projects.length} · E</p>
+            <details className="model-credit">
+              <summary className="cursor-pointer font-mono text-[11px] text-muted">Model credit</summary>
+              <p className="mt-2 max-w-xs text-right font-mono text-xs leading-5 text-muted">
+                {device.kind === "macbook" ? "MacBook Air M2" : "iPhone 15 Pro Max"}. Model by{" "}
+                <a href={device.creditHref} target="_blank" rel="noreferrer" className="link-draw">
+                  {device.credit}
+                </a>
+                ,{" "}
+                <a
+                  href="https://creativecommons.org/licenses/by/4.0/"
+                  target="_blank"
+                  rel="noreferrer license"
+                  className="link-draw"
+                >
+                  CC BY 4.0
+                </a>
+                .
+              </p>
+            </details>
+          </div>
         </div>
 
         <div
@@ -391,6 +641,7 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
           <div ref={shiftRef} className="work-shift">
             <ol
               ref={listRef}
+              aria-keyshortcuts="ArrowUp ArrowDown"
               className={
                 expanded
                   ? "relative flex min-w-0 gap-2 lg:flex-col lg:border-b lg:border-black"
@@ -414,6 +665,8 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
                       else itemRefs.current.delete(item.repo);
                     }}
                     className={`spring-ink relative z-[1] border-black ${
+                      focus && !item.tags.some((tag) => tag.toLowerCase() === focus.toLowerCase()) ? "is-dim" : ""
+                    } ${
                       expanded
                         ? `shrink-0 border lg:w-full lg:border-x-0 lg:border-b-0 lg:border-t ${selected ? "bg-black text-white lg:bg-transparent" : "text-black"}`
                         : `border-t ${selected ? "text-white" : "text-black"}`
@@ -426,7 +679,7 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
                       className={
                         expanded
                           ? "tap flex w-40 items-baseline gap-2 px-2 py-2 text-left lg:w-full"
-                          : "tap flex w-full items-start gap-3 px-3 pt-2.5 text-left"
+                          : `tap flex w-full items-start gap-3 px-3 text-left ${selected ? "py-4" : "pt-3"}`
                       }
                     >
                       <span className="font-mono text-[11px] tracking-[0.14em]">
@@ -442,22 +695,18 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
                         >
                           {item.title}
                         </span>
-                        {expanded ? null : (
-                          <span className="mt-0.5 block truncate text-xs leading-snug">{item.summary}</span>
+                        {expanded || selected ? null : (
+                          <>
+                            <span className="mt-1.5 block line-clamp-2 text-sm leading-6">{item.summary}</span>
+                            {item.meta ? (
+                              <span className="mt-1.5 block font-mono text-[11px] leading-none text-muted">{item.meta}</span>
+                            ) : null}
+                          </>
                         )}
                       </span>
                     </button>
                     {expanded ? null : (
-                      <p className="flex gap-3 px-3 pb-2.5 pl-9 font-mono text-[11px] tracking-[0.04em]">
-                        <a href={item.github} target="_blank" rel="noreferrer" className="link-draw">
-                          GitHub
-                        </a>
-                        {item.site ? (
-                          <a href={item.site} target="_blank" rel="noreferrer" className="link-draw">
-                            Live
-                          </a>
-                        ) : null}
-                      </p>
+                      <SourceLinks sources={item.sources} className="px-3 pb-2.5 pl-9" />
                     )}
                   </li>
                 );

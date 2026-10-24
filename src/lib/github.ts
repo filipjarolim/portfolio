@@ -18,14 +18,19 @@ export type LiveRepo = {
   homepage: string | null;
 };
 
-function githubHeaders(): HeadersInit {
+async function githubFetch(url: string, accept = "application/vnd.github+json") {
   const token = process.env.GITHUB_TOKEN;
-  return {
-    Accept: "application/vnd.github+json",
+  const headers = (authorized: boolean): HeadersInit => ({
+    Accept: accept,
     "User-Agent": "filip-folio",
     "X-GitHub-Api-Version": "2022-11-28",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+    ...(authorized && token ? { Authorization: `Bearer ${token}` } : {}),
+  });
+  if (token) {
+    const authed = await fetch(url, { cache: "no-store", headers: headers(true) });
+    if (authed.ok) return authed;
+  }
+  return fetch(url, { cache: "no-store", headers: headers(false) });
 }
 
 export async function getGithubProfile(): Promise<GithubProfile> {
@@ -42,10 +47,7 @@ export async function getGithubProfile(): Promise<GithubProfile> {
   };
 
   try {
-    const response = await fetch(
-      `https://api.github.com/users/${githubUser}`,
-      { headers: githubHeaders() },
-    );
+    const response = await githubFetch(`https://api.github.com/users/${githubUser}`);
     if (!response.ok) return fallback;
 
     const data = (await response.json()) as {
@@ -81,10 +83,7 @@ export async function getSelectedRepoData(
     names.map(async (name) => {
       const fallbackUrl = `https://github.com/${githubUser}/${name}`;
       try {
-        const response = await fetch(
-          `https://api.github.com/repos/${githubUser}/${name}`,
-          { headers: githubHeaders() },
-        );
+        const response = await githubFetch(`https://api.github.com/repos/${githubUser}/${name}`);
         if (!response.ok) {
           return [name, null] as const;
         }
@@ -123,14 +122,9 @@ export async function getRepoReadmeHtml(repo: string): Promise<string | null> {
   cacheLife("hours");
 
   try {
-    const response = await fetch(
+    const response = await githubFetch(
       `https://api.github.com/repos/${githubUser}/${repo}/readme`,
-      {
-        headers: {
-          ...githubHeaders(),
-          Accept: "application/vnd.github.html",
-        },
-      },
+      "application/vnd.github.html",
     );
     if (!response.ok) return null;
     const html = (await response.text()).trim();
