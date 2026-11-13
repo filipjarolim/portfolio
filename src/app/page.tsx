@@ -17,7 +17,7 @@ import {
 } from "@/content/selection";
 import { formatStars, formatUpdated, repoUrl } from "@/lib/format";
 import { getGithubProfile, getSelectedRepoData } from "@/lib/github";
-import { getSiteCopy } from "@/lib/site-copy";
+import { getSiteCopy } from "@/lib/site-copy-live";
 import { getSiteUrl } from "@/lib/site";
 
 function sourcesFor(item: SelectedRepo, github: string | null, homepage: string | null) {
@@ -81,6 +81,8 @@ export default async function Home() {
       summary,
       intro: written?.intro || summary,
       tags: written?.tags ?? [],
+      bullets: written?.bullets.length ? written.bullets : item.bullets,
+      onResume: item.resume !== false,
       stack: item.stack,
       meta: meta.join(" · "),
       sources: sourcesFor(item, repo?.htmlUrl ?? null, repo?.homepage ?? null),
@@ -123,8 +125,8 @@ export default async function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(person).replaceAll("<", "\\u003c") }}
       />
-      <link rel="preload" href="/models/macbook-air-m2.glb" as="fetch" />
-      <link rel="preload" href="/models/iphone-15-pro-max.glb" as="fetch" />
+      <link rel="preload" href="/models/macbook-air-m2.glb" as="fetch" media="(min-width: 1024px)" />
+      <link rel="preload" href="/models/iphone-15-pro-max.glb" as="fetch" media="(min-width: 1024px)" />
       <SiteHeader />
       <main
         id="content"
@@ -162,8 +164,8 @@ export default async function Home() {
 
         <ShowcaseSlot projects={showcaseProjects} />
 
-        <section id="about" className="about-track defer pt-24 sm:pt-36" aria-labelledby="about-heading">
-          <div className="drift">
+        <section id="about" className="about-track defer pt-32 sm:pt-44" aria-labelledby="about-heading">
+          <div className="drift drift-far">
           <div className="seen">
           <div className="about-pin">
             <h2 id="about-heading" className="text-xs font-bold uppercase tracking-[0.22em]">
@@ -181,23 +183,26 @@ export default async function Home() {
               <h3 className="font-mono text-xs tracking-[0.16em] uppercase">Coding</h3>
               <p className="mt-4 text-base leading-7 sm:text-lg sm:leading-8">{copy.practice}</p>
             </div>
-            <Hobbies likes={copy.likes} />
           </div>
+          </div>
+          </div>
+          <div className="drift drift-near">
+          <div className="seen">
+            <Hobbies likes={copy.likes} />
           </div>
           </div>
         </section>
 
-        <section id="study" aria-labelledby="study-heading" className="defer pt-28 sm:pt-40">
-          <div className="drift">
-          <div className="seen">
+        <section id="study" aria-labelledby="study-heading" className="defer pt-36 sm:pt-48">
           <div className="grid items-start gap-x-16 gap-y-8 lg:grid-cols-[18rem_minmax(0,1fr)]">
             <h2
               id="study-heading"
-              className="text-xs font-bold uppercase tracking-[0.22em] lg:col-start-2"
+              className="drift drift-near seen text-xs font-bold uppercase tracking-[0.22em] lg:col-start-2"
             >
               Study
             </h2>
-            <div className="row-start-2 w-full max-w-72 justify-self-start lg:col-start-1 lg:row-span-2 lg:row-start-1">
+            <div className="drift drift-far row-start-2 w-full max-w-72 justify-self-start lg:col-start-1 lg:row-span-2 lg:row-start-1">
+              <div className="seen">
               <Vault
                 theme="auto"
                 intensity={0.7}
@@ -205,8 +210,10 @@ export default async function Home() {
                 label="A vault door"
                 className="hairline-ink w-full"
               />
+              </div>
             </div>
-            <div className="min-w-0 lg:col-start-2">
+            <div className="drift drift-near min-w-0 lg:col-start-2">
+            <div className="seen">
               <p className="text-2xl font-bold tracking-[-0.03em] sm:text-3xl">{education.degree}</p>
               <p className="mt-3 text-base leading-7">
                 {education.school}, {education.faculty}
@@ -228,8 +235,7 @@ export default async function Home() {
                 <span className="font-mono text-xs font-normal tracking-[0.08em]">Open</span>
               </a>
             </div>
-          </div>
-          </div>
+            </div>
           </div>
 
           {selectedPosts.length > 0 ? (
@@ -255,8 +261,8 @@ export default async function Home() {
           ) : null}
         </section>
 
-        <div className="drift">
-        <footer className="seen mt-20 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-black pt-10 sm:mt-28">
+        <div className="drift drift-near">
+        <footer className="seen mt-24 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-black pt-10 sm:mt-32">
           <a
             href={`mailto:${links.email}`}
             className="link-draw text-[clamp(1.05rem,4.2vw,2.75rem)] font-bold tracking-[-0.04em] break-all"
@@ -267,6 +273,9 @@ export default async function Home() {
             value={links.email}
             className="tap shrink-0 border border-black px-3 py-2 text-sm font-bold"
           />
+          <a href="/admin" className="link-draw ml-auto font-mono text-xs tracking-[0.08em] text-muted">
+            Admin
+          </a>
         </footer>
         </div>
       </main>

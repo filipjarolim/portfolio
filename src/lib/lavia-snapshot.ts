@@ -1,15 +1,7 @@
 import { cacheLife } from "next/cache";
+import { absolutize } from "@/lib/snapshot-urls";
 
 const ORIGIN = "https://plavanilaviabrno.cz";
-
-function absolutize(html: string) {
-  return html
-    .replace(/(\s(?:href|src|poster|action)=["'])\//gi, `$1${ORIGIN}/`)
-    .replace(/url\(\s*(['"]?)\//gi, `url($1${ORIGIN}/`)
-    .replace(/\s(srcset|imagesrcset)=["'][^"']*["']/gi, (attribute) =>
-      attribute.replace(/(^|[\s,])\//g, `$1${ORIGIN}/`),
-    );
-}
 
 export async function getLaviaSnapshot(): Promise<string> {
   "use cache";
@@ -22,7 +14,7 @@ export async function getLaviaSnapshot(): Promise<string> {
     throw new Error(`Lavia snapshot failed: ${response.status}`);
   }
 
-  const html = absolutize(await response.text())
+  const html = absolutize(await response.text(), ORIGIN)
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
     .replace(
       /<head>/i,

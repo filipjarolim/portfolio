@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { PerimeterDesk } from "@/components/perimeter-desk";
 import { ScreenGuard } from "@/components/screen-guard";
 import { selectedRepos } from "@/content/selection";
 import { getRepoReadmeHtml } from "@/lib/github";
 import { perimeterReadings } from "@/lib/perimeter";
-import { getSiteCopy } from "@/lib/site-copy";
+import { getSiteCopy } from "@/lib/site-copy-live";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -15,7 +16,15 @@ export function generateStaticParams() {
   return selectedRepos.map((item) => ({ repo: item.repo }));
 }
 
-export default async function ProjectScreen({
+export default function Page({ params }: { params: Promise<{ repo: string }> }) {
+  return (
+    <Suspense fallback={null}>
+      <ProjectScreen params={params} />
+    </Suspense>
+  );
+}
+
+async function ProjectScreen({
   params,
 }: {
   params: Promise<{ repo: string }>;

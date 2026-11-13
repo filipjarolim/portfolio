@@ -1,15 +1,7 @@
 import { cacheLife } from "next/cache";
+import { absolutize } from "@/lib/snapshot-urls";
 
 const ORIGIN = "https://strakataturistika.vercel.app";
-
-function absolutize(html: string) {
-  return html
-    .replace(/(\s(?:href|src|poster|action)=["'])\//gi, `$1${ORIGIN}/`)
-    .replace(/url\(\s*(['"]?)\//gi, `url($1${ORIGIN}/`)
-    .replace(/\s(srcset|imagesrcset)=["'][^"']*["']/gi, (attribute) =>
-      attribute.replace(/(^|[\s,])\//g, `$1${ORIGIN}/`),
-    );
-}
 
 /** The public site sends X-Frame-Options, so the laptop shows this same-origin copy. */
 export async function getStrakataSnapshot(): Promise<string> {
@@ -23,7 +15,7 @@ export async function getStrakataSnapshot(): Promise<string> {
     throw new Error(`Strakatá snapshot failed: ${response.status}`);
   }
 
-  const html = absolutize(await response.text())
+  const html = absolutize(await response.text(), ORIGIN)
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
     .replace(/<div hidden id="S:/g, '<div id="S:')
     .replace(

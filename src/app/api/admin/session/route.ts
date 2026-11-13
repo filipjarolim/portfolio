@@ -1,26 +1,14 @@
 import { isLocalEdit, passwordMatches, readSession, sameOrigin, writeSession, clearSession } from "@/lib/admin-auth";
+import { clientAddress, isBlocked, noteAttempt, type Attempt } from "@/lib/login-guard";
 
-const attempts = new Map<string, { count: number; until: number }>();
+const attempts = new Map<string, Attempt>();
 
 function blocked(request: Request) {
-  const key = request.headers.get("x-forwarded-for") ?? "local";
-  const entry = attempts.get(key);
-  return Boolean(entry && entry.until > Date.now() && entry.count >= 8);
+  return isBlocked(attempts, clientAddress(request.headers), Date.now());
 }
 
 function mark(request: Request, ok: boolean) {
-  const key = request.headers.get("x-forwarded-for") ?? "local";
-  if (ok) {
-    attempts.delete(key);
-    return;
-  }
-  const entry = attempts.get(key) ?? { count: 0, until: Date.now() + 15 * 60 * 1000 };
-  if (entry.until < Date.now()) {
-    entry.count = 0;
-    entry.until = Date.now() + 15 * 60 * 1000;
-  }
-  entry.count += 1;
-  attempts.set(key, entry);
+  noteAttempt(attempts, clientAddress(request.headers), ok, Date.now());
 }
 
 export async function GET(request: Request) {

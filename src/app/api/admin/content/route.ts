@@ -1,6 +1,6 @@
 import { isLocalEdit, readSession, sameOrigin } from "@/lib/admin-auth";
 import { selectedRepos } from "@/content/selection";
-import { getSiteCopy } from "@/lib/site-copy";
+import { getSiteCopy } from "@/lib/site-copy-live";
 import { saveSiteCopy } from "@/lib/site-store";
 
 async function allowed(request: Request) {

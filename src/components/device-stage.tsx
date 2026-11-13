@@ -2,8 +2,9 @@
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { CoreSpiral } from "@/components/core-spiral";
+import { anchorShift, viewDistance } from "@/lib/framing";
 import type { Camera, Mesh, Object3D, PerspectiveCamera } from "three";
 import { Box3, BoxGeometry, Group, Mesh as SolidMesh, MeshStandardMaterial, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -593,52 +594,147 @@ function PlaceCamera({
   return null;
 }
 
-function CameraTune({ fov }: { fov: number }) {
-  const camera = useThree((state) => state.camera);
-  const invalidate = useThree((state) => state.invalidate);
-  useLayoutEffect(() => {
-    if (!("fov" in camera)) return;
-    const perspective = camera as PerspectiveCamera;
-    if (perspective.fov === fov) return;
-    perspective.fov = fov;
-    perspective.updateProjectionMatrix();
-    invalidate();
-  }, [camera, fov, invalidate]);
-  return null;
-}
-
-const fitCenter = new Vector3();
-const fitSizeVec = new Vector3();
-const fitBox = new Box3();
 const frontDir = new Vector3(0, 0.04, 1).normalize();
 const angleDir = new Vector3(0, 0.4, 5).normalize();
+const scratchA = new Vector3();
+const scratchB = new Vector3();
+const scratchC = new Vector3();
+const scratchD = new Vector3();
+const scratchE = new Vector3();
+const extentBox = new Box3();
 
-function fitCamera(
-  camera: PerspectiveCamera,
-  controls: OrbitControlsImpl,
-  rig: Object3D,
-  direction: Vector3,
-) {
-  rig.updateWorldMatrix(true, true);
-  const box = fitBox.setFromObject(rig);
-  if (box.isEmpty()) return;
-  const center = box.getCenter(fitCenter);
-  const boxSize = box.getSize(fitSizeVec);
-  const maxSize = Math.max(boxSize.x, boxSize.y, boxSize.z);
-  const fitHeight = maxSize / (2 * Math.atan((Math.PI * camera.fov) / 360));
-  const fitWidth = fitHeight / Math.max(camera.aspect, 0.01);
-  const distance = 1.04 * Math.max(fitHeight, fitWidth);
-  camera.position.copy(center).addScaledVector(direction, distance);
-  camera.near = Math.max(distance / 100, 0.01);
-  camera.far = distance * 100;
-  camera.lookAt(center);
-  camera.updateProjectionMatrix();
-  controls.target.copy(center);
-  controls.update();
+/** How much of the view a subject should occupy. spanY is its height, fillX its width, anchor its center from the top. */
+const framing = {
+  overview: { spanY: 0.84, fillX: 0.88, anchor: 0.5 },
+  laptop: { spanY: 0.68, fillX: 0.92, anchor: 0.36 },
+  phone: { spanY: 0.88, fillX: 0.8, anchor: 0.5 },
+} as const;
+
+function planeSize(box: Box3, direction: Vector3, out: { width: number; height: number; center: Vector3 }) {
+  const center = box.getCenter(out.center);
+  const hint = Math.abs(direction.y) > 0.92 ? scratchB.set(0, 0, 1) : scratchB.set(0, 1, 0);
+  const right = scratchC.crossVectors(hint, direction).normalize();
+  const up = scratchD.crossVectors(direction, right).normalize();
+  let minRight = Infinity;
+  let maxRight = -Infinity;
+  let minUp = Infinity;
+  let maxUp = -Infinity;
+  const min = box.min;
+  const max = box.max;
+  for (let corner = 0; corner < 8; corner += 1) {
+    scratchE.set(corner & 1 ? max.x : min.x, corner & 2 ? max.y : min.y, corner & 4 ? max.z : min.z);
+    scratchE.sub(center);
+    const across = scratchE.dot(right);
+    const along = scratchE.dot(up);
+    if (across < minRight) minRight = across;
+    if (across > maxRight) maxRight = across;
+    if (along < minUp) minUp = along;
+    if (along > maxUp) maxUp = along;
+  }
+  out.width = Math.max(maxRight - minRight, 1e-4);
+  out.height = Math.max(maxUp - minUp, 1e-4);
 }
 
-/** Turns the device square to the camera when it is expanded, then keeps a short orbit around that view. */
-function StagePose({ kind, straight }: { kind: DeviceKind; straight: boolean }) {
+function findMesh(root: Object3D, name: string) {
+  let found: SolidMesh | null = null;
+  root.traverse((object) => {
+    if (found) return;
+    const mesh = object as SolidMesh;
+    if (mesh.isMesh && mesh.name === name) found = mesh;
+  });
+  return found;
+}
+
+function atRotation(rig: Object3D, rotation: readonly [number, number, number], run: () => void) {
+  const x = rig.rotation.x;
+  const y = rig.rotation.y;
+  const z = rig.rotation.z;
+  rig.rotation.set(rotation[0], rotation[1], rotation[2]);
+  rig.updateWorldMatrix(true, true);
+  try {
+    run();
+  } finally {
+    rig.rotation.set(x, y, z);
+    rig.updateWorldMatrix(true, true);
+  }
+}
+
+type Shot = { position: Vector3; target: Vector3 };
+
+const screenMeasure = {
+  center: new Vector3(),
+  up: new Vector3(),
+  width: 1,
+  height: 1,
+};
+
+function measureScreen(mesh: SolidMesh, right: Axis, up: Axis) {
+  if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+  const bounds = mesh.geometry.boundingBox;
+  if (!bounds) return false;
+  bounds.getCenter(screenMeasure.center);
+  bounds.getSize(scratchB);
+  const axisRight = scratchC.set(right[0], right[1], right[2]);
+  const axisUp = scratchD.set(up[0], up[1], up[2]);
+  const width = Math.abs(scratchB.dot(axisRight));
+  const height = Math.abs(scratchB.dot(axisUp));
+  if (width < 1e-4 || height < 1e-4) return false;
+  const local = scratchA.copy(screenMeasure.center);
+  scratchB.copy(local).addScaledVector(axisRight, width / 2);
+  mesh.localToWorld(scratchB);
+  scratchE.copy(local).addScaledVector(axisRight, -width / 2);
+  mesh.localToWorld(scratchE);
+  screenMeasure.width = scratchB.distanceTo(scratchE);
+  scratchB.copy(local).addScaledVector(axisUp, height / 2);
+  mesh.localToWorld(scratchB);
+  scratchE.copy(local).addScaledVector(axisUp, -height / 2);
+  mesh.localToWorld(scratchE);
+  screenMeasure.height = scratchB.distanceTo(scratchE);
+  mesh.localToWorld(screenMeasure.center);
+  screenMeasure.up.copy(axisUp).transformDirection(mesh.matrixWorld);
+  if (Math.abs(screenMeasure.up.y) < 0.45) screenMeasure.up.set(0, 1, 0);
+  return true;
+}
+
+/** Viewport y (0 at the top) where the glass ends, so the keyboard fade can start on that line. */
+function keyboardLine(rig: Object3D, kind: DeviceKind, camera: PerspectiveCamera) {
+  if (kind !== "macbook") return null;
+  camera.updateMatrixWorld();
+  const screen = findMesh(rig, devices.macbook.screen);
+  if (!screen || !measureScreen(screen, devices.macbook.right, devices.macbook.up)) return null;
+  scratchE.copy(screenMeasure.center).addScaledVector(screenMeasure.up, -screenMeasure.height / 2);
+  scratchE.project(camera);
+  if (scratchE.z > 1) return null;
+  return -scratchE.y * 0.5 + 0.5;
+}
+
+function composeShot(
+  center: Vector3,
+  width: number,
+  height: number,
+  direction: Vector3,
+  up: Vector3,
+  fov: number,
+  aspect: number,
+  rule: { spanY: number; fillX: number; anchor: number },
+  out: Shot,
+) {
+  const distance = viewDistance(width, height, fov, aspect, rule.spanY, rule.fillX);
+  const shift = anchorShift(distance, fov, rule.anchor);
+  out.target.copy(center).addScaledVector(up, -shift);
+  out.position.copy(out.target).addScaledVector(direction, distance);
+}
+
+/** Scrolls the device toward a close, frontal view, then leaves a short orbit there. */
+function StagePose({
+  kind,
+  engageRef,
+  paintRef,
+}: {
+  kind: DeviceKind;
+  engageRef: RefObject<number>;
+  paintRef: RefObject<(engage: number, settled: boolean, keyboardTop: number | null) => void>;
+}) {
   const camera = useThree((state) => state.camera) as PerspectiveCamera;
   const controls = useThree((state) => state.controls) as OrbitControlsImpl | null;
   const scene = useThree((state) => state.scene);
@@ -647,7 +743,13 @@ function StagePose({ kind, straight }: { kind: DeviceKind; straight: boolean }) 
   const rest = useRef<{ azimuth: number; polar: number } | null>(null);
   const sized = useRef({ w: 0, h: 0 });
   const reduce = useRef(false);
+  const shown = useRef(0);
   const aim = useRef(new Vector3().copy(angleDir));
+  const overview = useRef<Shot>({ position: new Vector3(), target: new Vector3() });
+  const close = useRef<Shot>({ position: new Vector3(), target: new Vector3() });
+  const blendedTarget = useRef(new Vector3());
+  const blendedPos = useRef(new Vector3());
+  const shotKey = useRef("");
 
   useEffect(() => {
     reduce.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -655,18 +757,33 @@ function StagePose({ kind, straight }: { kind: DeviceKind; straight: boolean }) 
 
   useLayoutEffect(() => {
     rest.current = null;
-  }, [kind, straight]);
+  }, [kind]);
 
   useFrame((_, delta) => {
     const rig = scene.getObjectByName("device-rig");
-    if (!rig || !controls) return;
+    if (!rig || !controls || !("isPerspectiveCamera" in camera)) return;
     if (sized.current.w !== size.width || sized.current.h !== size.height) {
       sized.current = { w: size.width, h: size.height };
       rest.current = null;
     }
+    const dt = Math.min(delta, 0.05);
+    const goal = reduce.current ? ((engageRef.current ?? 0) > 0.45 ? 1 : 0) : (engageRef.current ?? 0);
+    const blend = reduce.current ? 1 : 1 - Math.exp(-dt * 3.1);
+    shown.current += (goal - shown.current) * blend;
+    if (Math.abs(goal - shown.current) < 0.0015) shown.current = goal;
+    const engage = shown.current;
+    const settled = Math.abs(goal - engage) < 0.02;
+
     const spec = devices[kind];
-    const target = straight ? spec.front : spec.rotation;
-    const step = reduce.current ? 1 : 1 - Math.exp(-Math.min(delta, 0.05) * 8);
+    const step = reduce.current ? 1 : 1 - Math.exp(-dt * 4.4);
+    const target: [number, number, number] = [0, 0, 0];
+    for (let i = 0; i < 3; i++) {
+      const swing = Math.atan2(
+        Math.sin(spec.front[i] - spec.rotation[i]),
+        Math.cos(spec.front[i] - spec.rotation[i]),
+      );
+      target[i] = spec.rotation[i] + swing * engage;
+    }
     let spinning = false;
     const axes = ["x", "y", "z"] as const;
     for (let i = 0; i < 3; i++) {
@@ -681,12 +798,71 @@ function StagePose({ kind, straight }: { kind: DeviceKind; straight: boolean }) 
         rig.rotation[axes[i]] = target[i];
       }
     }
-    const goal = straight ? frontDir : angleDir;
-    if (spinning || !rest.current) {
-      aim.current.lerp(goal, step);
-      if (aim.current.lengthSq() > 1e-8) aim.current.normalize();
-      fitCamera(camera, controls, rig, aim.current);
-      if (!spinning) {
+
+    const phone = kind === "iphone";
+    const fov = phone ? 26 : 30;
+    if (Math.abs(camera.fov - fov) > 0.01) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
+    const key = `${kind}:${size.width}x${size.height}:${fov.toFixed(2)}`;
+    if (shotKey.current !== key) {
+      const aspect = Math.max(camera.aspect, 0.01);
+      const specNow = devices[kind];
+      const screen = findMesh(rig, specNow.screen);
+      const extent = { width: 1, height: 1, center: new Vector3() };
+      atRotation(rig, specNow.rotation, () => {
+        const box = extentBox.setFromObject(rig);
+        if (!box.isEmpty()) {
+          planeSize(box, angleDir, extent);
+          const up = scratchA.set(0, 1, 0);
+          composeShot(extent.center, extent.width, extent.height, angleDir, up, fov, aspect, framing.overview, overview.current);
+        }
+      });
+      atRotation(rig, specNow.front, () => {
+        if (phone || !screen) {
+          const box = extentBox.setFromObject(rig);
+          if (!box.isEmpty()) {
+            planeSize(box, frontDir, extent);
+            composeShot(extent.center, extent.width, extent.height, frontDir, scratchA.set(0, 1, 0), fov, aspect, framing.phone, close.current);
+          }
+        } else {
+          if (measureScreen(screen, specNow.right, specNow.up)) {
+            composeShot(
+              screenMeasure.center,
+              screenMeasure.width,
+              screenMeasure.height,
+              frontDir,
+              screenMeasure.up,
+              fov,
+              aspect,
+              framing.laptop,
+              close.current,
+            );
+          }
+        }
+      });
+      shotKey.current = key;
+      rest.current = null;
+    }
+
+    blendedTarget.current.lerpVectors(overview.current.target, close.current.target, engage);
+    blendedPos.current.lerpVectors(overview.current.position, close.current.position, engage);
+    aim.current.copy(blendedPos.current).sub(blendedTarget.current);
+    if (aim.current.lengthSq() < 1e-8) aim.current.copy(frontDir);
+
+    const approaching = spinning || !settled || !rest.current;
+    if (approaching) {
+      const distance = aim.current.length();
+      camera.position.copy(blendedPos.current);
+      camera.near = Math.max(distance / 120, 0.01);
+      camera.far = distance * 80;
+      camera.lookAt(blendedTarget.current);
+      camera.updateProjectionMatrix();
+      controls.target.copy(blendedTarget.current);
+      controls.update();
+      paintRef.current?.(engage, false, keyboardLine(rig, kind, camera));
+      if (!spinning && settled) {
         rest.current = {
           azimuth: controls.getAzimuthalAngle(),
           polar: controls.getPolarAngle(),
@@ -695,16 +871,17 @@ function StagePose({ kind, straight }: { kind: DeviceKind; straight: boolean }) 
       invalidate();
       return;
     }
-    if (!straight) return;
+    paintRef.current?.(engage, true, keyboardLine(rig, kind, camera));
+    if (engage < 0.72 || !rest.current) return;
     const pose = rest.current;
-    const yaw = 0.2;
-    const pitch = 0.1;
+    const yaw = phone ? 0.46 : 0.22;
+    const pitch = phone ? 0.22 : 0.1;
     const azimuth = controls.getAzimuthalAngle();
     const polar = controls.getPolarAngle();
     const minAzimuth = pose.azimuth - yaw;
     const maxAzimuth = pose.azimuth + yaw;
-    const minPolar = Math.max(0.2, pose.polar - pitch);
-    const maxPolar = Math.min(Math.PI - 0.2, pose.polar + pitch);
+    const minPolar = Math.max(0.15, pose.polar - pitch);
+    const maxPolar = Math.min(Math.PI - 0.15, pose.polar + pitch);
     const nextAzimuth = azimuth < minAzimuth ? minAzimuth : azimuth > maxAzimuth ? maxAzimuth : azimuth;
     const nextPolar = polar < minPolar ? minPolar : polar > maxPolar ? maxPolar : polar;
     if (nextAzimuth === azimuth && nextPolar === polar) return;
@@ -713,6 +890,24 @@ function StagePose({ kind, straight }: { kind: DeviceKind; straight: boolean }) 
     invalidate();
   });
 
+  return null;
+}
+
+function EngageDriver() {
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => {
+    let frame = 0;
+    const kick = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => invalidate());
+    };
+    window.addEventListener("scroll", kick, { passive: true });
+    kick();
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", kick);
+    };
+  }, [invalidate]);
   return null;
 }
 
@@ -746,20 +941,44 @@ export function DeviceStage({
   kind,
   src,
   title,
-  interactive = false,
+  engageRef,
 }: {
   kind: DeviceKind;
   src: string;
   title: string;
-  interactive?: boolean;
+  engageRef: RefObject<number>;
 }) {
   const holder = useRef<HTMLDivElement>(null);
+  const veilRef = useRef<HTMLDivElement>(null);
+  const shownRef = useRef(kind);
+  const hotRef = useRef(false);
+  const fineRef = useRef(true);
+  const paintRef = useRef<(engage: number, settled: boolean, keyboardTop: number | null) => void>(() => {});
   const [generation, setGeneration] = useState(0);
   const [ready, setReady] = useState(false);
   const [live, setLive] = useState(true);
   const [shown, setShown] = useState(kind);
   const [veil, setVeil] = useState(false);
+  const [hot, setHot] = useState(false);
   const frame = `${shown}:${generation}`;
+  shownRef.current = shown;
+  paintRef.current = (engage: number, settled: boolean, keyboardTop: number | null) => {
+    const node = veilRef.current;
+    if (node) {
+      const line = keyboardTop !== null && keyboardTop > 0.42 && keyboardTop < 0.94;
+      node.style.opacity = line ? engage.toFixed(3) : "0";
+      if (line && keyboardTop !== null) node.style.top = `${(keyboardTop * 100).toFixed(2)}%`;
+    }
+    const next = settled && engage > 0.82 && fineRef.current;
+    if (next !== hotRef.current) {
+      hotRef.current = next;
+      setHot(next);
+    }
+  };
+
+  useLayoutEffect(() => {
+    fineRef.current = window.matchMedia("(pointer: fine)").matches;
+  }, []);
 
   useEffect(() => {
     const node = holder.current;
@@ -796,38 +1015,39 @@ export function DeviceStage({
   }, [veil, kind, shown]);
 
   return (
-    <div ref={holder} className={`relative h-full w-full isolate ${interactive ? "" : "pointer-events-none"}`}>
+    <div ref={holder} className={`relative h-full w-full isolate ${hot ? "cursor-grab active:cursor-grabbing" : ""}`}>
     {ready ? null : (
       <div className="stage-wait">
         <CoreSpiral />
       </div>
     )}
     <Canvas
-      className={`stage-fade h-full w-full ${ready && !veil ? "opacity-100" : "opacity-0"} ${interactive ? "" : "pointer-events-none"}`}
+      className={`stage-fade h-full w-full ${ready && !veil ? "opacity-100" : "opacity-0"} ${hot ? "" : "pointer-events-none"}`}
       frameloop={live ? "demand" : "never"}
       dpr={[1, 1.75]}
       gl={{ alpha: true, antialias: true, powerPreference: "high-performance", stencil: false }}
       camera={{ fov: shown === "iphone" ? 28 : 32, position: [0, 0.4, 5] }}
     >
-      <PointerGate interactive={interactive} />
-      <CameraTune fov={shown === "iphone" ? 28 : 32} />
-      <Settle token={`${shown}:${src}:${interactive}`} active={live || interactive} />
-      <Model key={shown} kind={shown} src={src} title={title} interactive={interactive} onMounted={setGeneration} />
-      <PlaceCamera token={frame} straight={interactive} onPlaced={setReady} />
-      <StagePose kind={shown} straight={interactive} />
+      <PointerGate interactive={hot} />
+      <Settle token={`${shown}:${src}:${hot}`} active={live || hot} />
+      <EngageDriver />
+      <Model key={shown} kind={shown} src={src} title={title} interactive={hot} onMounted={setGeneration} />
+      <PlaceCamera token={frame} straight={false} onPlaced={setReady} />
+      <StagePose kind={shown} engageRef={engageRef} paintRef={paintRef} />
       <ambientLight intensity={0.85} />
       <directionalLight position={[3, 5, 4]} intensity={2.6} />
       <directionalLight position={[-3, 2, 1]} intensity={0.55} />
       <OrbitControls
         makeDefault
-        enabled={interactive}
+        enabled={hot}
         enablePan={false}
         enableZoom={false}
         enableDamping
-        dampingFactor={0.16}
-        rotateSpeed={0.7}
+        dampingFactor={0.07}
+        rotateSpeed={shown === "iphone" ? 0.42 : 0.5}
       />
     </Canvas>
+    <div ref={veilRef} aria-hidden="true" className="stage-keyboard" />
     </div>
   );
 }

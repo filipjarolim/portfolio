@@ -1,4 +1,3 @@
-import { cacheLife, cacheTag } from "next/cache";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -110,46 +109,49 @@ export function normalize(input: unknown): SiteCopy {
   for (const item of selectedRepos) projects[item.repo] = projectCopy(item.repo, incoming[item.repo]);
 
   const requested = Array.isArray(record.projectOrder) ? record.projectOrder.map((item) => clip(item, 80)) : [];
-  const projectOrder = [
-    ...requested.filter((repo) => projects[repo]),
-    ...selectedRepos.map((item) => item.repo).filter((repo) => !requested.includes(repo)),
-  ];
+  const seen = new Set<string>();
+  const projectOrder: string[] = [];
+  for (const repo of requested) {
+    if (!projects[repo] || seen.has(repo)) continue;
+    seen.add(repo);
+    projectOrder.push(repo);
+  }
+  for (const item of selectedRepos) {
+    if (seen.has(item.repo)) continue;
+    projectOrder.push(item.repo);
+  }
 
   const skillRows = Array.isArray(record.skills) ? record.skills : skills;
+  const parsedSkills = skillRows
+    .map((item) => {
+      const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+      return { label: clip(row.label, 40), value: clip(row.value, 160) };
+    })
+    .filter((item) => item.label && item.value)
+    .slice(0, 8);
+  const focus = lines(record.focus, 6, 32);
+  const likeLines = lines(record.likes, 8, 40);
   return {
     headline: clip(record.headline, 160) || "Cybersecurity and mobile apps.",
     intro:
       clip(record.intro, 800) ||
       "The projects here are the software I ship now, on the web and on a phone.",
     note: clip(record.note, 400) || linkedinIntro,
-    focus: lines(record.focus, 6, 32).length ? lines(record.focus, 6, 32) : ["Cybersecurity", "Mobile apps"],
+    focus: focus.length ? focus : ["Cybersecurity", "Mobile apps"],
     practice: clip(record.practice, 600) || practice,
-    likes: lines(record.likes, 8, 40).length ? lines(record.likes, 8, 40) : [...likes],
-    skills: skillRows
-      .map((item) => {
-        const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
-        return { label: clip(row.label, 40), value: clip(row.value, 160) };
-      })
-      .filter((item) => item.label && item.value)
-      .slice(0, 8),
+    likes: likeLines.length ? likeLines : [...likes],
+    skills: parsedSkills.length ? parsedSkills : skills.map((item) => ({ ...item })),
     projectOrder,
     projects,
   };
 }
 
-function readSiteFile() {
+export function readSiteFile() {
   try {
     return normalize(JSON.parse(readFileSync(FILE, "utf8")));
   } catch {
     return defaultSiteCopy();
   }
-}
-
-export async function getSiteCopy(): Promise<SiteCopy> {
-  "use cache";
-  cacheTag("site-copy");
-  cacheLife("hours");
-  return readSiteFile();
 }
 
 export function siteFilePath() {

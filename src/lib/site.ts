@@ -5,5 +5,10 @@ export function getSiteUrl() {
     process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() || process.env.VERCEL_URL?.trim();
   const raw = configured || vercel;
   if (!raw) return new URL("http://127.0.0.1:3000");
-  return new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+  try {
+    const withProtocol = raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
+    return new URL(withProtocol);
+  } catch {
+    return new URL("http://127.0.0.1:3000");
+  }
 }

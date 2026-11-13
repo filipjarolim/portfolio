@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CopyLabel } from "@/components/copy-control";
 import { DeviceStage, type DeviceKind } from "@/components/device-stage";
+import { links } from "@/content/selection";
 import { confirm, copyText, tap } from "@/lib/haptic";
 
 const DEVICE_MODELS = ["/models/macbook-air-m2.glb", "/models/iphone-15-pro-max.glb"];
@@ -13,6 +14,8 @@ export type ShowcaseProject = {
   summary: string;
   intro: string;
   tags: string[];
+  bullets: string[];
+  onResume: boolean;
   stack: string;
   meta: string;
   sources: { label: string; href: string }[];
@@ -45,6 +48,51 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function smoothstep(value: number) {
+  const x = clamp(value, 0, 1);
+  return x * x * (3 - 2 * x);
+}
+
+function MobileScreen({ src, title }: { src: string; title: string }) {
+  const [slots, setSlots] = useState<[string, string | null]>([src, null]);
+  const [show, setShow] = useState<0 | 1>(0);
+  const loaded = useRef(new Set<string>());
+
+  useEffect(() => {
+    const visible = show === 0 ? slots[0] : slots[1];
+    if (src === visible) return;
+    const hidden = show === 0 ? 1 : 0;
+    if (slots[hidden] === src) {
+      if (loaded.current.has(src)) setShow(hidden);
+      return;
+    }
+    setSlots(show === 0 ? [slots[0], src] : [src, slots[1]]);
+  }, [src, slots, show]);
+
+  function onLoad(frameSrc: string) {
+    loaded.current.add(frameSrc);
+    if (frameSrc !== src) return;
+    setShow(slots[0] === frameSrc ? 0 : 1);
+  }
+
+  return (
+    <>
+      {slots.map((frameSrc, index) =>
+        frameSrc ? (
+          <iframe
+            key={`${index}:${frameSrc}`}
+            title={title}
+            src={frameSrc}
+            className="pointer-events-none absolute inset-0 h-full w-full border-0 bg-[var(--bg)] transition-opacity duration-500"
+            style={{ opacity: show === index ? 1 : 0 }}
+            onLoad={() => onLoad(frameSrc)}
+          />
+        ) : null,
+      )}
+    </>
+  );
+}
+
 function SourceLinks({
   sources,
   className,
@@ -73,10 +121,10 @@ function SourceLinks({
 
 export default function Showcase({ projects }: { projects: ShowcaseProject[] }) {
   const [kind, setKind] = useState<DeviceKind>("macbook");
+  const [wide, setWide] = useState<boolean | null>(null);
   const [repo, setRepo] = useState(projects[0]?.repo ?? "");
-  const [expanded, setExpanded] = useState(false);
-  const [focus, setFocus] = useState<string | null>(null);
   const picked = useRef(false);
+  const engageRef = useRef(0);
   const [copied, setCopied] = useState(false);
   const trackRef = useRef<HTMLElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
@@ -91,9 +139,7 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
   const pinStart = useRef(0);
   const pinSpan = useRef(1);
   const viewCenter = useRef(0);
-  const expandedRef = useRef(false);
   repoRef.current = repo;
-  expandedRef.current = expanded;
 
   function placeMark(id: string) {
     const item = itemRefs.current.get(id);
@@ -106,12 +152,13 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
   function measure() {
     const track = trackRef.current;
     const pin = pinRef.current;
-    const view = viewRef.current;
-    if (!track || !pin || !view) return;
+    if (!track || !pin) return;
     const stickyTop = Number.parseFloat(getComputedStyle(pin).top) || 0;
     const trackTop = track.getBoundingClientRect().top + window.scrollY;
     pinStart.current = trackTop - stickyTop;
     pinSpan.current = Math.max(1, track.offsetHeight - pin.offsetHeight);
+    const view = viewRef.current;
+    if (!view) return;
     viewCenter.current = view.clientHeight / 2;
     centers.current = projects.map((item) => {
       const node = itemRefs.current.get(item.repo);
@@ -120,27 +167,36 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
   }
 
   function focusAt(scrollY: number) {
-    const shift = shiftRef.current;
-    const spots = centers.current;
     const count = projects.length;
-    if (!shift || count === 0 || spots.length !== count) return null;
-    if (expandedRef.current) {
-      shift.style.transform = "";
-      return null;
-    }
+    if (count === 0) return null;
     const t = clamp((scrollY - pinStart.current) / pinSpan.current, 0, 1);
     const cursor = clamp(t * count - 0.5, 0, count - 1);
-    const lower = Math.floor(cursor);
-    const upper = Math.min(count - 1, lower + 1);
-    const mix = cursor - lower;
-    const focus = spots[lower] * (1 - mix) + spots[upper] * mix;
-    shift.style.transform = `translate3d(0, ${viewCenter.current - focus}px, 0)`;
+    const shift = shiftRef.current;
+    const spots = centers.current;
+    if (shift && spots.length === count) {
+      const lower = Math.floor(cursor);
+      const upper = Math.min(count - 1, lower + 1);
+      const mix = cursor - lower;
+      const focus = spots[lower] * (1 - mix) + spots[upper] * mix;
+      shift.style.transform = `translate3d(0, ${viewCenter.current - focus}px, 0)`;
+    }
     return projects[Math.round(cursor)]?.repo ?? null;
+  }
+
+  function placeEngage(scrollY: number) {
+    const ramp = Math.max(window.innerHeight * 0.55, 1);
+    const start = pinStart.current;
+    const end = start + pinSpan.current;
+    const enter = smoothstep((scrollY - start) / ramp);
+    const leave = smoothstep((end - scrollY) / ramp);
+    const engage = scrollY <= start || scrollY >= end ? 0 : Math.min(enter, leave);
+    engageRef.current = engage;
+    pinRef.current?.style.setProperty("--engage", engage.toFixed(4));
   }
 
   function scrollToProject(next: string, behavior: ScrollBehavior) {
     const index = projects.findIndex((item) => item.repo === next);
-    if (index < 0 || expandedRef.current) return;
+    if (index < 0) return;
     const count = Math.max(projects.length, 1);
     const top = pinStart.current + pinSpan.current * ((index + 0.5) / count);
     window.scrollTo({ top: Math.max(0, top), behavior });
@@ -152,17 +208,19 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
     history.replaceState(null, "", url);
   }
 
+  useLayoutEffect(() => {
+    const query = window.matchMedia("(min-width: 1024px)");
+    const apply = () => setWide(query.matches);
+    apply();
+    query.addEventListener("change", apply);
+    return () => query.removeEventListener("change", apply);
+  }, []);
+
   useEffect(() => {
     const param = new URLSearchParams(window.location.search).get("device");
     const saved = sessionStorage.getItem("folio-device");
     if (param === "phone" || (param !== "laptop" && saved === "iphone")) setKind("iphone");
     else if (param === "laptop" || saved === "macbook") setKind("macbook");
-  }, []);
-
-  useEffect(() => {
-    const close = () => setExpanded(false);
-    window.addEventListener("folio-close-expand", close);
-    return () => window.removeEventListener("folio-close-expand", close);
   }, []);
 
   useEffect(() => {
@@ -189,6 +247,7 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
     const onScroll = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
+        placeEngage(window.scrollY);
         const next = focusAt(window.scrollY);
         if (lock.current || !next || next === repoRef.current) return;
         repoRef.current = next;
@@ -234,6 +293,7 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
   }, []);
 
   useEffect(() => {
+    if (!wide) return;
     const urls = [...DEVICE_MODELS, ...projects.flatMap((project) => project.surfaces.map((surface) => surface.src))];
     let links: HTMLLinkElement[] = [];
     const idle = window.requestIdleCallback ?? ((callback: IdleRequestCallback) => window.setTimeout(callback, 500));
@@ -256,65 +316,31 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
       cancel(id);
       for (const link of links) link.remove();
     };
-  }, [projects]);
+  }, [projects, wide]);
 
   useLayoutEffect(() => {
     measure();
+    placeEngage(window.scrollY);
     focusAt(window.scrollY);
     placeMark(repo);
-  }, [repo, projects, expanded]);
+  }, [repo, projects, wide]);
 
   useEffect(() => {
-    if (!expanded) return;
-    const html = document.documentElement;
-    const body = document.body;
-    const previousHtml = html.style.overflow;
-    const previousBody = body.style.overflow;
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    const block = (event: Event) => {
-      const target = event.target;
-      if (target instanceof Element && target.closest(".work-view, .work-rail")) return;
-      event.preventDefault();
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setExpanded(false);
-        return;
-      }
-      const target = event.target;
-      const onControl = target instanceof Element && !!target.closest("button, a, input, textarea");
-      if (!onControl && (event.key === " " || event.key === "PageUp" || event.key === "PageDown")) {
-        event.preventDefault();
-      }
-    };
-    window.addEventListener("wheel", block, { passive: false });
-    window.addEventListener("touchmove", block, { passive: false });
-    window.addEventListener("keydown", onKey);
-    return () => {
-      html.style.overflow = previousHtml;
-      body.style.overflow = previousBody;
-      window.removeEventListener("wheel", block);
-      window.removeEventListener("touchmove", block);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [expanded]);
-
-  useEffect(() => {
-    const list = listRef.current;
     const track = trackRef.current;
-    const view = viewRef.current;
-    if (!list || !track || !view) return;
+    if (!track) return;
     const observer = new ResizeObserver(() => {
       measure();
+      placeEngage(window.scrollY);
       focusAt(window.scrollY);
       placeMark(repoRef.current);
     });
-    observer.observe(list);
     observer.observe(track);
-    observer.observe(view);
+    if (pinRef.current) observer.observe(pinRef.current);
+    if (listRef.current) observer.observe(listRef.current);
+    if (viewRef.current) observer.observe(viewRef.current);
     const onResize = () => {
       measure();
+      placeEngage(window.scrollY);
       focusAt(window.scrollY);
       placeMark(repoRef.current);
     };
@@ -323,11 +349,9 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
       observer.disconnect();
       window.removeEventListener("resize", onResize);
     };
-  }, [projects]);
+  }, [projects, wide]);
 
   const actions = useRef({
-    step: (_delta: number) => {},
-    toggle: () => {},
     pick: (_index: number) => {},
   });
 
@@ -336,21 +360,6 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
       if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
       const target = event.target;
       if (target instanceof Element && target.closest("input, textarea, select, [contenteditable], iframe")) return;
-      if (expandedRef.current && (event.key === "ArrowDown" || event.key === "ArrowRight")) {
-        event.preventDefault();
-        actions.current.step(1);
-        return;
-      }
-      if (expandedRef.current && (event.key === "ArrowUp" || event.key === "ArrowLeft")) {
-        event.preventDefault();
-        actions.current.step(-1);
-        return;
-      }
-      if (event.key === "e" || event.key === "E") {
-        event.preventDefault();
-        actions.current.toggle();
-        return;
-      }
       if (/^[1-9]$/.test(event.key)) {
         event.preventDefault();
         actions.current.pick(Number(event.key) - 1);
@@ -364,20 +373,10 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
   const device = devices.find((item) => item.kind === kind) ?? devices[0];
   if (!project) return null;
   const surface = project.surfaces.find((item) => item.device === kind) ?? project.surfaces[0];
+  const phoneSurface = project.surfaces.find((item) => item.device === "iphone") ?? surface;
+  const projectIndex = projects.findIndex((item) => item.repo === project.repo);
   const distinctSurfaces =
     new Set(project.surfaces.map((item) => item.src)).size > 1 ? project.surfaces : [];
-
-  function revealCard(next: string) {
-    const item = itemRefs.current.get(next);
-    const view = viewRef.current;
-    if (!item || !view || !expandedRef.current) return;
-    const itemBox = item.getBoundingClientRect();
-    const viewBox = view.getBoundingClientRect();
-    if (itemBox.left < viewBox.left) view.scrollLeft -= viewBox.left - itemBox.left;
-    else if (itemBox.right > viewBox.right) view.scrollLeft += itemBox.right - viewBox.right;
-    if (itemBox.top < viewBox.top) view.scrollTop -= viewBox.top - itemBox.top;
-    else if (itemBox.bottom > viewBox.bottom) view.scrollTop += itemBox.bottom - viewBox.bottom;
-  }
 
   function deviceFor(item: ShowcaseProject) {
     const tags = item.tags.map((tag) => tag.toLowerCase());
@@ -400,7 +399,6 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
     remember(next);
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     scrollToProject(next, reduce ? "auto" : "smooth");
-    revealCard(next);
   }
 
   function choose(next: DeviceKind, fromUser = false) {
@@ -414,20 +412,6 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
     history.replaceState(null, "", url);
   }
 
-  function focusTag(tag: string) {
-    tap(8);
-    const next = focus === tag ? null : tag;
-    setFocus(next);
-    if (!next) return;
-    const current = projects.find((item) => item.repo === repo);
-    const matches = (item: ShowcaseProject) => item.tags.some((value) => value.toLowerCase() === next.toLowerCase());
-    if (current && matches(current)) return;
-    const match = projects.find(matches);
-    if (match) select(match.repo);
-  }
-
-  const tags = [...new Set(projects.flatMap((item) => item.tags))];
-
   async function copyLink() {
     const url = new URL(window.location.href);
     url.hash = repo;
@@ -440,21 +424,16 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
     window.setTimeout(() => setCopied(false), 1400);
   }
 
-  function step(delta: number) {
-    const index = projects.findIndex((item) => item.repo === repoRef.current);
-    const next = projects[index + delta];
-    if (next) select(next.repo);
-  }
-
-  actions.current.step = step;
   actions.current.pick = (index) => {
     const next = projects[index];
     if (next) select(next.repo);
   };
-  actions.current.toggle = () => {
-    confirm();
-    setExpanded((value) => !value);
-  };
+
+  const captionLinks = [
+    ...project.sources,
+    { label: "LinkedIn", href: links.linkedin },
+    ...(project.onResume ? [{ label: "CV", href: "/cv.pdf" }] : []),
+  ];
 
   return (
     <section
@@ -464,7 +443,49 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
       className="work-track fade-in"
       style={{ ["--work-steps" as string]: Math.max(projects.length - 1, 1) }}
     >
-      <div ref={pinRef} className={`work-pin${expanded ? " is-expanded" : ""}`}>
+      <div
+        ref={pinRef}
+        className="work-pin"
+        style={
+          wide === false
+            ? { width: "100vw", marginLeft: "calc(50% - 50vw)", paddingTop: 0, paddingBottom: 0 }
+            : undefined
+        }
+      >
+      {wide === false ? (
+        <div className="relative min-h-0 flex-1 overflow-hidden bg-[var(--bg)]">
+          <MobileScreen src={phoneSurface?.src ?? ""} title={`${project.title} on a phone`} />
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] px-5 pt-24 [&_a]:pointer-events-auto"
+            style={{
+              paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))",
+              background:
+                "linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--bg) 72%, transparent) 28%, var(--bg) 52%, var(--bg) 100%)",
+            }}
+          >
+            <div key={project.repo} className="work-cloud-copy mx-auto w-full max-w-lg">
+              <h2 id="work-heading" className="font-mono text-[11px] tracking-[0.16em] uppercase">
+                My work
+                <span className="px-2 font-normal text-muted">
+                  {String(projectIndex + 1).padStart(2, "0")}
+                  <span className="px-1">/</span>
+                  {String(projects.length).padStart(2, "0")}
+                </span>
+              </h2>
+              <p className="mt-3 text-[clamp(1.7rem,7vw,2.4rem)] font-bold leading-none tracking-[-0.045em]">
+                {project.title}
+              </p>
+              <p className="mt-3 line-clamp-2 text-base leading-6">{project.intro || project.summary}</p>
+              <p className="mt-2 font-mono text-[11px] tracking-[0.02em] text-muted">
+                {[project.stack, project.meta].filter(Boolean).join(" · ")}
+              </p>
+              <SourceLinks sources={captionLinks} className="mt-3" />
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {wide ? (
+      <>
       <div className="mb-3 flex shrink-0 items-center gap-3">
         <h2 id="work-heading" className="shrink-0 text-xs font-bold uppercase tracking-[0.22em]">
           My work
@@ -501,15 +522,6 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
           </div>
           <button
             type="button"
-            aria-pressed={expanded}
-            aria-keyshortcuts="e"
-            onClick={() => actions.current.toggle()}
-            className="tap sweep shrink-0 border border-black bg-white px-3 py-3 text-sm font-bold"
-          >
-            {expanded ? "Close" : "Expand"}
-          </button>
-          <button
-            type="button"
             onClick={copyLink}
             aria-live="polite"
             className={`copy-sheen tap shrink-0 border border-black bg-white px-3 py-3 text-sm font-bold ${copied ? "is-copied" : ""}`}
@@ -517,58 +529,19 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
             <CopyLabel copied={copied} label="Link" />
           </button>
       </div>
-      {tags.length > 0 ? (
-        <div className="mb-3 flex shrink-0 flex-wrap gap-2">
-          <button
-            type="button"
-            aria-pressed={focus === null}
-            onClick={() => {
-              tap(8);
-              setFocus(null);
-            }}
-            className={`border border-black px-3 py-2 text-xs font-bold ${focus === null ? "bg-black text-white" : "bg-white"}`}
-          >
-            All
-          </button>
-          {tags.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              aria-pressed={focus === tag}
-              onClick={() => focusTag(tag)}
-              className={`border border-black px-3 py-2 text-xs font-bold ${focus === tag ? "bg-black text-white" : "bg-white"}`}
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      <div
-        className={
-          expanded
-            ? "grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] gap-3 lg:grid-cols-[minmax(0,1fr)_14rem] lg:grid-rows-1 lg:gap-6"
-            : "grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_11rem] gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(15rem,22rem)] lg:grid-rows-1 lg:gap-10"
-        }
-      >
+      <div className="work-layout grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_12.5rem] gap-3 lg:grid-rows-1">
         <div className="group flex min-h-0 min-w-0 flex-col">
           <div className="relative min-h-0 flex-1">
             <div
               role="application"
               aria-label={`${project.title} on ${device.label}`}
-              className={
-                expanded
-                  ? "h-full min-h-0 w-full"
-                  : kind === "iphone"
-                    ? "mx-auto h-full min-h-0 w-full max-w-[min(100%,36rem)]"
-                    : "h-full min-h-0 w-full"
-              }
+              className="h-full min-h-0 w-full"
             >
               <DeviceStage
                 kind={kind}
                 src={surface?.src ?? ""}
                 title={`${project.title} on ${device.label}`}
-                interactive={expanded}
+                engageRef={engageRef}
               />
             </div>
           </div>
@@ -576,15 +549,15 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
             <p className="flex items-baseline justify-between gap-3 text-sm font-bold tracking-tight">
               <span className="min-w-0">{project.title}</span>
               <span className="shrink-0 font-mono text-[11px] font-normal text-muted tabular-nums">
-                {String(projects.findIndex((item) => item.repo === project.repo) + 1).padStart(2, "0")}
+                {String(projectIndex + 1).padStart(2, "0")}
                 <span className="px-1">/</span>
                 {String(projects.length).padStart(2, "0")}
               </span>
             </p>
-            <p className="mt-3 text-base leading-7">{project.intro || project.summary}</p>
-            {project.meta ? (
-              <p className="mt-2 font-mono text-[11px] tracking-[0.02em] text-muted">{project.meta}</p>
-            ) : null}
+            <p className="mt-2 text-base leading-6">{project.intro || project.summary}</p>
+            <p className="mt-2 font-mono text-[11px] tracking-[0.02em] text-muted">
+              {[project.stack, project.meta].filter(Boolean).join(" · ")}
+            </p>
             {distinctSurfaces.length > 1 ? (
               <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-label="Source">
                 {distinctSurfaces.map((item) => {
@@ -605,9 +578,9 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
               </div>
             ) : null}
           </div>
-          {expanded ? <SourceLinks sources={project.sources} className="mt-2 shrink-0" /> : null}
-          <div className="mt-4 flex items-baseline justify-between gap-4">
-            <p className="font-mono text-[11px] text-muted">1–{projects.length} · E</p>
+          <SourceLinks sources={captionLinks} className="mt-2 shrink-0" />
+          <div className="mt-3 flex items-baseline justify-between gap-4">
+            <p className="font-mono text-[11px] text-muted">1–{projects.length}</p>
             <details className="model-credit">
               <summary className="cursor-pointer font-mono text-[11px] text-muted">Model credit</summary>
               <p className="mt-2 max-w-xs text-right font-mono text-xs leading-5 text-muted">
@@ -630,30 +603,10 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
           </div>
         </div>
 
-        <div
-          ref={viewRef}
-          className={
-            expanded
-              ? "work-rail flex gap-2 overflow-x-auto lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto"
-              : "work-view relative min-h-0 overflow-hidden"
-          }
-        >
+        <div ref={viewRef} className="work-view relative min-h-0 overflow-hidden">
           <div ref={shiftRef} className="work-shift">
-            <ol
-              ref={listRef}
-              aria-keyshortcuts="ArrowUp ArrowDown"
-              className={
-                expanded
-                  ? "relative flex min-w-0 gap-2 lg:flex-col lg:border-b lg:border-black"
-                  : "relative min-w-0 border-b border-black"
-              }
-              aria-label="Projects"
-            >
-              <span
-                ref={markRef}
-                aria-hidden="true"
-                className={`spring-mark top-0 left-0 h-px w-full opacity-0${expanded ? " hidden lg:block" : ""}`}
-              />
+            <ol ref={listRef} className="relative min-w-0 border-b border-black" aria-label="Projects">
+              <span ref={markRef} aria-hidden="true" className="spring-mark top-0 left-0 h-px w-full opacity-0" />
               {projects.map((item, index) => {
                 const selected = item.repo === project.repo;
                 return (
@@ -664,38 +617,20 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
                       if (node) itemRefs.current.set(item.repo, node);
                       else itemRefs.current.delete(item.repo);
                     }}
-                    className={`spring-ink relative z-[1] border-black ${
-                      focus && !item.tags.some((tag) => tag.toLowerCase() === focus.toLowerCase()) ? "is-dim" : ""
-                    } ${
-                      expanded
-                        ? `shrink-0 border lg:w-full lg:border-x-0 lg:border-b-0 lg:border-t ${selected ? "bg-black text-white lg:bg-transparent" : "text-black"}`
-                        : `border-t ${selected ? "text-white" : "text-black"}`
-                    }`}
+                    className={`spring-ink relative z-[1] border-t border-black ${selected ? "text-white" : "text-black"}`}
                   >
                     <button
                       type="button"
                       aria-current={selected ? "true" : undefined}
                       onClick={() => select(item.repo)}
-                      className={
-                        expanded
-                          ? "tap flex w-40 items-baseline gap-2 px-2 py-2 text-left lg:w-full"
-                          : `tap flex w-full items-start gap-3 px-3 text-left ${selected ? "py-4" : "pt-3"}`
-                      }
+                      className="tap flex w-full items-start gap-3 px-3 pt-3 text-left"
                     >
                       <span className="font-mono text-[11px] tracking-[0.14em]">
                         {String(index + 1).padStart(2, "0")}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span
-                          className={
-                            expanded
-                              ? "block text-sm font-bold leading-tight"
-                              : "block text-base font-bold leading-tight tracking-[-0.03em]"
-                          }
-                        >
-                          {item.title}
-                        </span>
-                        {expanded || selected ? null : (
+                        <span className="block text-base font-bold leading-tight tracking-[-0.03em]">{item.title}</span>
+                        {selected ? null : (
                           <>
                             <span className="mt-1.5 block line-clamp-2 text-sm leading-6">{item.summary}</span>
                             {item.meta ? (
@@ -705,7 +640,18 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
                         )}
                       </span>
                     </button>
-                    {expanded ? null : (
+                    {selected && item.bullets.length > 0 ? (
+                      <div className="px-3 pb-3 pl-9">
+                        {item.onResume ? (
+                          <p className="font-mono text-[10px] tracking-[0.16em] opacity-70">CV</p>
+                        ) : null}
+                        <ul className={`${item.onResume ? "mt-1.5" : ""} space-y-1 text-sm leading-5`}>
+                          {item.bullets.map((bullet) => (
+                            <li key={bullet}>{bullet}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
                       <SourceLinks sources={item.sources} className="px-3 pb-2.5 pl-9" />
                     )}
                   </li>
@@ -715,6 +661,12 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
           </div>
         </div>
       </div>
+      </>
+      ) : wide === null ? (
+        <h2 id="work-heading" className="sr-only">
+          My work
+        </h2>
+      ) : null}
       </div>
     </section>
   );

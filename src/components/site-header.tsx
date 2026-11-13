@@ -97,9 +97,6 @@ export function SiteHeader() {
 
   function jump(id: string) {
     tap(10);
-    document.documentElement.style.overflow = "";
-    document.body.style.overflow = "";
-    window.dispatchEvent(new Event("folio-close-expand"));
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth" });
   }
@@ -152,9 +149,6 @@ export function SiteHeader() {
           </a>
           <a href="/cv.pdf" className={`${item} relative z-[1]`} onClick={() => tap(8)}>
             CV
-          </a>
-          <a href="/admin" className={`${item} relative z-[1]`} onClick={() => tap(8)}>
-            Admin
           </a>
           <ThemeToggle />
         </nav>

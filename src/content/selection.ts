@@ -97,6 +97,11 @@ export type SelectedRepo = {
   embed?: string;
   /** A real date range, only when one exists outside GitHub. */
   dates?: string;
+  /**
+   * Same sentences as Jake Gutierrez’s template in cv/resume.tex.
+   * False for a project that exists only on this site.
+   */
+  resume?: boolean;
   bullets: string[];
 };
 
@@ -172,6 +177,7 @@ export const selectedRepos: SelectedRepo[] = [
     summary: "A desk that reads the security headers of the sites on this page.",
     stack: "TypeScript",
     githubRepo: null,
+    resume: false,
     bullets: [
       "Reads this portfolio, Plavecká škola Lavia, and Strakatá turistika.",
       "Shows HTTPS, framing, content type, referrer policy, and permissions.",

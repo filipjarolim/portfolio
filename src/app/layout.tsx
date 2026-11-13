@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import { fallbackProfile, links } from "@/content/selection";
-import { getSiteCopy } from "@/lib/site-copy";
+import { getSiteCopy } from "@/lib/site-copy-live";
 import { getGithubProfile } from "@/lib/github";
 import { getSiteUrl } from "@/lib/site";
 import "./globals.css";
