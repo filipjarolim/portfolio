@@ -259,7 +259,7 @@ a:focus-visible {
 }
 
 .fold.is-open {
-  grid-template-rows: 1fr;
+  grid-template-rows: auto;
 }
 
 .fold-body {

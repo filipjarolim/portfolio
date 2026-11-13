@@ -102,7 +102,7 @@ export default async function Home() {
     jobTitle: "Cybersecurity student",
     address: {
       "@type": "PostalAddress",
-      addressLocality: "Brno",
+      addressLocality: "Brno / Ostrava",
       addressCountry: "CZ",
     },
     alumniOf: {

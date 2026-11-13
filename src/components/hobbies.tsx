@@ -7,7 +7,7 @@ import { tap } from "@/lib/haptic";
 const details = {
   travelling: {
     title: "Travelling",
-    body: "I travel when I can. Brno is home for the degree. Move across the field.",
+    body: "I travel when I can. Home is Brno and Ostrava. Move across the field.",
     figure: "terrain" as const,
   },
   photography: {

@@ -52,7 +52,7 @@ export async function generateMetadata(): Promise<Metadata> {
       "cybersecurity",
       "Masaryk University",
       "Faculty of Informatics",
-      "Brno",
+      "Brno / Ostrava",
       "network architecture",
       "cryptography",
     ],

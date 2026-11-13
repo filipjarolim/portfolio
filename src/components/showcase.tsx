@@ -546,17 +546,13 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
             </div>
           </div>
           <div className="mt-3 max-w-xl shrink-0">
-            <p className="flex items-baseline justify-between gap-3 text-sm font-bold tracking-tight">
-              <span className="min-w-0">{project.title}</span>
-              <span className="shrink-0 font-mono text-[11px] font-normal text-muted tabular-nums">
+            <p className="flex items-baseline justify-between gap-3 font-mono text-[11px] tracking-[0.02em] text-muted">
+              <span className="min-w-0">{[project.stack, project.meta].filter(Boolean).join(" · ")}</span>
+              <span className="shrink-0 tabular-nums">
                 {String(projectIndex + 1).padStart(2, "0")}
                 <span className="px-1">/</span>
                 {String(projects.length).padStart(2, "0")}
               </span>
-            </p>
-            <p className="mt-2 text-base leading-6">{project.intro || project.summary}</p>
-            <p className="mt-2 font-mono text-[11px] tracking-[0.02em] text-muted">
-              {[project.stack, project.meta].filter(Boolean).join(" · ")}
             </p>
             {distinctSurfaces.length > 1 ? (
               <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-label="Source">
@@ -579,8 +575,7 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
             ) : null}
           </div>
           <SourceLinks sources={captionLinks} className="mt-2 shrink-0" />
-          <div className="mt-3 flex items-baseline justify-between gap-4">
-            <p className="font-mono text-[11px] text-muted">1–{projects.length}</p>
+          <div className="mt-3 flex justify-end">
             <details className="model-credit">
               <summary className="cursor-pointer font-mono text-[11px] text-muted">Model credit</summary>
               <p className="mt-2 max-w-xs text-right font-mono text-xs leading-5 text-muted">

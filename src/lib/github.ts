@@ -62,7 +62,7 @@ export async function getGithubProfile(): Promise<GithubProfile> {
     return {
       name: data.name || fallback.name,
       bio: data.bio || fallback.bio,
-      location: data.location || fallback.location,
+      location: fallback.location,
       publicRepos:
         typeof data.public_repos === "number" ? data.public_repos : null,
       hireable: data.hireable === true,

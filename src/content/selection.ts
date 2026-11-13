@@ -16,7 +16,7 @@ export const links = {
 export const fallbackProfile = {
   name: "Filip Jarolím",
   bio: "Cybersecurity Aspirant | Focus: Network Architecture, Cryptography & CTF | Incoming FI MUNI",
-  location: "Brno, Czech Republic",
+  location: "Brno / Ostrava",
 } as const;
 
 /** His public LinkedIn line, kept as written. */
@@ -28,7 +28,7 @@ export const education = {
   faculty: "Faculty of Informatics",
   degree: "B.Sc. Cybersecurity",
   dates: "2026 — Present",
-  location: "Brno, Czech Republic",
+  location: "Brno / Ostrava",
 } as const;
 
 export const certification = {

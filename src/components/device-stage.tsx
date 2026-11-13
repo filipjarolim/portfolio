@@ -23,7 +23,8 @@ const devices = {
     up: [0, 0, 1],
     out: [0, -1, 0],
     cssWidth: 960,
-    radius: "2.2%",
+    /** Circular corner, as a fraction of the glass width. A percentage would ellipse it. */
+    radius: 0.034,
     rotation: [0.42, 0.55, 0] as [number, number, number],
     front: [0, 0, 0] as [number, number, number],
   },
@@ -35,7 +36,8 @@ const devices = {
     up: [0, 1, 0],
     out: [0, 0, -1],
     cssWidth: 430,
-    radius: "11%",
+    /** iPhone 15 Pro Max display corner, 55pt on a 430pt-wide screen. */
+    radius: 55 / 430,
     rotation: [0.16, Math.PI + 0.42, 0] as [number, number, number],
     front: [0, Math.PI, 0] as [number, number, number],
   },
@@ -266,7 +268,8 @@ function ProjectedScreen({
   up: Axis;
   out: Axis;
   cssWidth: number;
-  radius: string;
+  /** Corner radius as a fraction of the screen width, so both axes stay circular. */
+  radius: number;
   interactive: boolean;
 }) {
   const gl = useThree((state) => state.gl);
@@ -315,15 +318,22 @@ function ProjectedScreen({
     el.style.left = "0";
     el.style.top = "0";
     el.style.transformOrigin = "0 0";
-    el.style.overflow = "hidden";
-    el.style.background = "#000";
+    const radiusPx = `${Math.round(radius * cssWidth)}px`;
+    el.style.background = "transparent";
     el.style.pointerEvents = "none";
-    el.style.borderRadius = radius;
     el.style.willChange = "transform";
     el.style.userSelect = "none";
     el.style.setProperty("-webkit-user-select", "none");
     el.style.setProperty("-webkit-touch-callout", "none");
     el.addEventListener("contextmenu", (event) => event.preventDefault());
+
+    const clip = document.createElement("div");
+    clip.style.width = "100%";
+    clip.style.height = "100%";
+    clip.style.overflow = "hidden";
+    clip.style.borderRadius = radiusPx;
+    clip.style.clipPath = `inset(0 round ${radiusPx})`;
+    clip.style.background = "#000";
 
     const iframe = document.createElement("iframe");
     iframe.style.width = "100%";
@@ -336,7 +346,8 @@ function ProjectedScreen({
       sealScreen(iframe);
       iframe.style.opacity = "1";
     });
-    el.appendChild(iframe);
+    clip.appendChild(iframe);
+    el.appendChild(clip);
     layer.appendChild(el);
     parent.appendChild(layer);
     host.current = layer;
@@ -348,7 +359,7 @@ function ProjectedScreen({
       host.current = null;
       frame.current = null;
     };
-  }, [gl, radius, invalidate]);
+  }, [gl, cssWidth, radius, invalidate]);
 
   useLayoutEffect(() => {
     const el = frame.current;
