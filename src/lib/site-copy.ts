@@ -32,20 +32,20 @@ export type SiteCopy = {
 const FILE = join(process.cwd(), "content", "site.json");
 
 const intros: Record<string, { intro: string; tags: string[] }> = {
-  brainCore: {
+  "Strakata-Turistika-ANDROID": {
     intro:
-      "Brain is a local second brain. The vault, the command line, the web graph, and the MCP server stay on the machine. Paste text, a link, or a screenshot and it becomes a note.",
+      "Strakatá turistika is a phone app and a website. The Flutter repository ships the GPS app for Android and iOS. The website is a second repository, for trips, GPX files, and the season board.",
+    tags: ["Web", "Mobile"],
+  },
+  plavanilavia: {
+    intro:
+      "The site for Plavecká škola Lavia. The season lives in the repository, staff edit it in the admin, and a save commits to GitHub so Vercel can rebuild.",
     tags: ["Web"],
   },
   "Nauc-Me-To": {
     intro:
       "NaučMěTo is still in development. It takes a PDF, slides, or notes and turns them into a quiz, a cheat sheet, and flashcards. Supabase handles the account, the files, and the database.",
     tags: ["Web"],
-  },
-  perimeter: {
-    intro:
-      "Perimeter is a small security desk for this site. It reads the response and says, in plain language, what the browser is being told.",
-    tags: ["Security"],
   },
 };
 
@@ -77,10 +77,10 @@ function projectCopy(repo: string, value: unknown): ProjectCopy {
 
 export function defaultSiteCopy(): SiteCopy {
   return normalize({
-    headline: "Cybersecurity.",
-    intro: "Brain is what I ship. NaučMěTo is still in development.",
+    headline: "Cybersecurity and mobile apps.",
+    intro: "Strakatá turistika and Plavecká škola Lavia are live. NaučMěTo is still in development.",
     note: linkedinIntro,
-    focus: ["Cybersecurity"],
+    focus: ["Cybersecurity", "Mobile apps"],
     practice,
     likes: [...likes],
     skills: skills.map((item) => ({ ...item })),
@@ -122,10 +122,12 @@ export function normalize(input: unknown): SiteCopy {
   const focus = lines(record.focus, 6, 32);
   const likeLines = lines(record.likes, 8, 40);
   return {
-    headline: clip(record.headline, 160) || "Cybersecurity.",
-    intro: clip(record.intro, 800) || "Brain is what I ship. NaučMěTo is still in development.",
+    headline: clip(record.headline, 160) || "Cybersecurity and mobile apps.",
+    intro:
+      clip(record.intro, 800) ||
+      "Strakatá turistika and Plavecká škola Lavia are live. NaučMěTo is still in development.",
     note: clip(record.note, 400) || linkedinIntro,
-    focus: focus.length ? focus : ["Cybersecurity"],
+    focus: focus.length ? focus : ["Cybersecurity", "Mobile apps"],
     practice: clip(record.practice, 600) || practice,
     likes: likeLines.length ? likeLines : [...likes],
     skills: parsedSkills.length ? parsedSkills : skills.map((item) => ({ ...item })),

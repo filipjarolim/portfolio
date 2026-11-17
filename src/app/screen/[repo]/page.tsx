@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { PerimeterDesk } from "@/components/perimeter-desk";
 import { ScreenGuard } from "@/components/screen-guard";
 import { selectedRepos } from "@/content/selection";
 import { getRepoReadmeHtml } from "@/lib/github";
-import { perimeterReadings } from "@/lib/perimeter";
 import { getSiteCopy } from "@/lib/site-copy-live";
 
 export const metadata: Metadata = {
@@ -32,15 +30,6 @@ async function ProjectScreen({
   const { repo } = await params;
   const project = selectedRepos.find((item) => item.repo === repo);
   if (!project) notFound();
-  if (project.repo === "perimeter") {
-    const readings = await perimeterReadings();
-    return (
-      <>
-        <ScreenGuard />
-        <PerimeterDesk readings={readings} />
-      </>
-    );
-  }
 
   const copy = await getSiteCopy();
   const written = copy.projects[project.repo];

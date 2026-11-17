@@ -37,8 +37,8 @@ export const certification = {
 } as const;
 
 export const skills = [
-  { label: "Languages", value: "Python, TypeScript" },
-  { label: "Frameworks", value: "Next.js, React" },
+  { label: "Languages", value: "Python, TypeScript, Dart" },
+  { label: "Frameworks", value: "Next.js, React, Flutter" },
   { label: "Tools", value: "Git, Linux, Supabase, Tailwind CSS, Cursor" },
 ] as const;
 
@@ -142,62 +142,44 @@ export type SelectedRepo = {
 
 export const selectedRepos: SelectedRepo[] = [
   {
-    repo: "brainCore",
-    title: "Brain",
-    summary:
-      "Local AI second brain: a Markdown vault, a CLI, a web graph, and an MCP server, all on your machine.",
-    stack: "Python, TypeScript",
-    form: "code",
-    command: 'brain ask "How does Euler\'s theorem connect IB000 to RSA?"',
-    runtime: "ollama · llama3.1:8b-instruct-q4_K_M",
-    notes: [
+    repo: "Strakata-Turistika-ANDROID",
+    title: "Strakatá turistika",
+    summary: "A Flutter GPS app and a separate website for the same season.",
+    stack: "Flutter, Dart, Next.js",
+    githubRepo: "Strakata-Turistika-ANDROID",
+    site: "https://strakataturistika.vercel.app",
+    form: "app",
+    dates: "Jan 2025 — Present",
+    sources: [
+      { label: "App", href: "https://github.com/filipjarolim/Strakata-Turistika-ANDROID" },
+      { label: "Web", href: "https://github.com/filipjarolim/Strakata-Turistika-WEB" },
+      { label: "Site", href: "https://strakataturistika.vercel.app" },
       {
-        slug: "IB000_Math",
-        title: "IB000 Mathematical Foundations",
-        tags: "math, discrete, university",
-        links: ["Asymmetric_Crypto", "PB071_C", "Second_Brain"],
-        line: "Euler's theorem is the engine behind RSA exponentiation.",
-      },
-      {
-        slug: "Asymmetric_Crypto",
-        title: "Asymmetric Cryptography",
-        tags: "crypto, security, math",
-        links: ["IB000_Math", "PB071_C", "Second_Brain"],
-        line: "Textbook RSA is correct by Euler's theorem when gcd(m, n) = 1.",
-      },
-      {
-        slug: "PB071_C",
-        title: "PB071 Principles of C",
-        tags: "c, systems, university",
-        links: ["IB000_Math", "Asymmetric_Crypto", "Second_Brain"],
-        line: "Square-and-multiply has to multiply without signed overflow.",
-      },
-      {
-        slug: "Second_Brain",
-        title: "Second Brain",
-        tags: "meta, workflow",
-        links: ["IB000_Math", "Inbox"],
-        line: "Wikilinks become graph edges. The CLI, the web UI, and MCP read the same files.",
-      },
-      {
-        slug: "Inbox",
-        title: "Inbox",
-        tags: "inbox, capture",
-        links: ["Second_Brain", "IB000_Math"],
-        line: "Unsorted captures land here until they are filed into a note.",
+        label: "Play",
+        href: "https://play.google.com/store/apps/details?id=cz.strakata.turistika.strakataturistikaandroidapp",
       },
     ],
-    pieces: [
-      { name: "Vault", line: "Markdown notes, wikilinks, and tags, in a folder on the machine." },
-      { name: "Capture", line: "Paste text, a URL, or a screenshot. It becomes a note." },
-      { name: "CLI", line: "brain list, ask, chat, capture, and exam." },
-      { name: "Web", line: "A local graph, a note editor, and a docked chat." },
-      { name: "MCP", line: "The same vault tools, for Cursor and other agents." },
+    surfaces: [
+      { device: "macbook", label: "Web", src: "/embed/strakata" },
+      { device: "iphone", label: "App", src: "/view/strakata" },
     ],
     bullets: [
-      "Local second brain: a Markdown vault, a CLI, a web graph, and an MCP server, with nothing required in the cloud.",
-      "Capture turns pasted text, a URL, or a screenshot into a note.",
-      "Ollama runs it on the machine. Groq and Gemini are optional.",
+      "Flutter GPS app for Android and iOS, listed on Google Play.",
+      "A second repository is the public site: trips, GPX files, scoring, and the board.",
+      "In active use since January 2025.",
+    ],
+  },
+  {
+    repo: "plavanilavia",
+    title: "Plavecká škola Lavia",
+    summary: "The school site at plavanilaviabrno.cz. Next.js, no database, hosted on Vercel.",
+    stack: "Next.js, TypeScript",
+    site: "https://plavanilaviabrno.cz",
+    embed: "/embed/lavia",
+    bullets: [
+      "Public site for the school at plavanilaviabrno.cz.",
+      "Season content lives in the repository and is served by Next.js on Vercel.",
+      "Staff edit it in an admin page. A save commits to GitHub and Vercel rebuilds.",
     ],
   },
   {
@@ -210,19 +192,6 @@ export const selectedRepos: SelectedRepo[] = [
       "Still in development.",
       "Turns an uploaded PDF, slides, or notes into a quiz, a cheat sheet, and flashcards.",
       "Accounts, file storage, and the database sit on Supabase.",
-    ],
-  },
-  {
-    repo: "perimeter",
-    title: "Perimeter",
-    summary: "A desk that reads the security headers of this site.",
-    stack: "TypeScript",
-    githubRepo: null,
-    resume: false,
-    bullets: [
-      "Reads the response headers of this site.",
-      "Shows HTTPS, framing, content type, referrer policy, and permissions.",
-      "Stays on this site.",
     ],
   },
 ];

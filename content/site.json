@@ -1,9 +1,10 @@
 {
-  "headline": "Cybersecurity.",
-  "intro": "Brain is what I ship. NaučMěTo is still in development.",
+  "headline": "Cybersecurity and mobile apps.",
+  "intro": "Strakatá turistika and Plavecká škola Lavia are live. NaučMěTo is still in development.",
   "note": "Open to entry-level roles, research projects, and internships across Cybersecurity, Data Analysis, and Technical Product Design.",
   "focus": [
-    "Cybersecurity"
+    "Cybersecurity",
+    "Mobile apps"
   ],
   "practice": "I use Cursor heavily for coding. Agents take the repetitive work. I decide what stays, and I review what ships.",
   "likes": [
@@ -14,11 +15,11 @@
   "skills": [
     {
       "label": "Languages",
-      "value": "Python, TypeScript"
+      "value": "Python, TypeScript, Dart"
     },
     {
       "label": "Frameworks",
-      "value": "Next.js, React"
+      "value": "Next.js, React, Flutter"
     },
     {
       "label": "Tools",
@@ -26,19 +27,34 @@
     }
   ],
   "projectOrder": [
-    "brainCore",
-    "Nauc-Me-To",
-    "perimeter"
+    "Strakata-Turistika-ANDROID",
+    "plavanilavia",
+    "Nauc-Me-To"
   ],
   "projects": {
-    "brainCore": {
-      "title": "Brain",
-      "summary": "Local AI second brain: a Markdown vault, a CLI, a web graph, and an MCP server, all on your machine.",
-      "intro": "Brain is a local second brain. The vault, the command line, the web graph, and the MCP server stay on the machine. Paste text, a link, or a screenshot and it becomes a note.",
+    "Strakata-Turistika-ANDROID": {
+      "title": "Strakatá turistika",
+      "summary": "A Flutter GPS app and a separate website for the same season.",
+      "intro": "Strakatá turistika is a phone app and a website. The Flutter repository ships the GPS app for Android and iOS. The website is a second repository, for trips, GPX files, and the season board.",
       "bullets": [
-        "Markdown vault with wikilinks and tags, plus a CLI, a web graph, and an MCP server.",
-        "Capture turns pasted text, URLs, or screenshots into notes.",
-        "Runs locally, with Ollama by default, or Groq or Gemini."
+        "Flutter application for Android and iOS, built around GPS.",
+        "The website is a second repository: trips, GPX files, scoring, and the public board.",
+        "Listed on Google Play, and on LinkedIn as active since January 2025."
+      ],
+      "tags": [
+        "Web",
+        "Mobile"
+      ],
+      "hidden": false
+    },
+    "plavanilavia": {
+      "title": "Plavecká škola Lavia",
+      "summary": "The school site at plavanilaviabrno.cz. Next.js, no database, hosted on Vercel.",
+      "intro": "The site for Plavecká škola Lavia. The season lives in the repository, staff edit it in the admin, and a save commits to GitHub so Vercel can rebuild.",
+      "bullets": [
+        "Public site for Plavecká škola Lavia at plavanilaviabrno.cz.",
+        "Next.js on Vercel, with season content stored in the repository.",
+        "Staff edit that content in the admin page; a save commits to GitHub and Vercel rebuilds."
       ],
       "tags": [
         "Web"
@@ -56,20 +72,6 @@
       ],
       "tags": [
         "Web"
-      ],
-      "hidden": false
-    },
-    "perimeter": {
-      "title": "Perimeter",
-      "summary": "A desk that reads the security headers of this site.",
-      "intro": "Perimeter is a small security desk for this site. It reads the response and says, in plain language, what the browser is being told.",
-      "bullets": [
-        "Reads the response headers of this site.",
-        "Shows HTTPS, framing, content type, referrer policy, and permissions.",
-        "Stays on this site."
-      ],
-      "tags": [
-        "Security"
       ],
       "hidden": false
     }

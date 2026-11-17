@@ -4,11 +4,13 @@ import { selectedRepos } from "../src/content/selection.ts";
 import { projectForm, showcaseSurfaces } from "../src/lib/showcase-form.ts";
 
 describe("showcase surfaces", () => {
-  it("gives a code project no device to frame", () => {
-    const brain = selectedRepos.find((item) => item.repo === "brainCore");
-    assert.ok(brain);
-    assert.equal(projectForm(brain), "code");
-    assert.deepEqual(showcaseSurfaces(brain), []);
+  it("keeps an app on the phone and its site on the laptop", () => {
+    const app = selectedRepos.find((item) => item.repo === "Strakata-Turistika-ANDROID");
+    assert.ok(app);
+    assert.equal(projectForm(app), "app");
+    const surfaces = showcaseSurfaces(app);
+    assert.equal(surfaces.find((item) => item.device === "iphone")?.label, "App");
+    assert.equal(surfaces.find((item) => item.device === "macbook")?.label, "Web");
   });
 
   it("keeps a site on both the laptop and the phone", () => {
