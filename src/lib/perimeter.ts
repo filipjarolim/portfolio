@@ -1,4 +1,3 @@
-import { cacheLife } from "next/cache";
 import { folioHeaders } from "@/lib/folio-headers";
 
 export type PerimeterRow = {
@@ -48,11 +47,6 @@ const watched: { key: string; name: string; note: string }[] = [
   },
 ];
 
-const liveTargets = [
-  { id: "lavia", label: "Lavia", url: "https://plavanilaviabrno.cz" },
-  { id: "strakata", label: "Strakatá", url: "https://strakataturistika.vercel.app" },
-] as const;
-
 function clip(value: string) {
   const clean = value.replace(/\s+/g, " ").trim();
   return clean.length > 180 ? `${clean.slice(0, 177)}…` : clean;
@@ -80,46 +74,6 @@ function folioReading(): PerimeterReading {
   };
 }
 
-async function liveReading(target: (typeof liveTargets)[number]): Promise<PerimeterReading> {
-  "use cache";
-  cacheLife("hours");
-
-  const allowed = new URL(target.url);
-  try {
-    const response = await fetch(allowed, {
-      headers: { "User-Agent": "filip-folio" },
-      redirect: "follow",
-      signal: AbortSignal.timeout(8000),
-    });
-    const landed = new URL(response.url);
-    if (landed.host !== allowed.host) {
-      return {
-        id: target.id,
-        label: target.label,
-        url: target.url,
-        rows: [],
-        error: "The site left its own host, so the headers were dropped.",
-      };
-    }
-    return {
-      id: target.id,
-      label: target.label,
-      url: target.url,
-      rows: rowsFrom(response.headers),
-      error: response.ok ? null : `The site answered ${response.status}.`,
-    };
-  } catch {
-    return {
-      id: target.id,
-      label: target.label,
-      url: target.url,
-      rows: [],
-      error: "The site could not be read.",
-    };
-  }
-}
-
 export async function perimeterReadings(): Promise<PerimeterReading[]> {
-  const live = await Promise.all(liveTargets.map((target) => liveReading(target)));
-  return [folioReading(), ...live];
+  return [folioReading()];
 }

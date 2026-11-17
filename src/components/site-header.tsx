@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { SoundToggle } from "@/components/sound-toggle";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { links } from "@/content/selection";
 import { tap } from "@/lib/haptic";
@@ -150,6 +151,7 @@ export function SiteHeader() {
           <a href="/cv.pdf" className={`${item} relative z-[1]`} onClick={() => tap(8)}>
             CV
           </a>
+          <SoundToggle />
           <ThemeToggle />
         </nav>
       </div>

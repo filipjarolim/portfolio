@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { CodeStage } from "@/components/code-stage";
 import { CopyLabel } from "@/components/copy-control";
 import { DeviceStage, type DeviceKind } from "@/components/device-stage";
-import { links } from "@/content/selection";
+import { links, type ProjectForm } from "@/content/selection";
 import { confirm, copyText, tap } from "@/lib/haptic";
 
 const DEVICE_MODELS = ["/models/macbook-air-m2.glb", "/models/iphone-15-pro-max.glb"];
@@ -20,6 +21,12 @@ export type ShowcaseProject = {
   meta: string;
   sources: { label: string; href: string }[];
   surfaces: { device: DeviceKind; label: string; src: string }[];
+  form: ProjectForm;
+  pieces: { name: string; line: string }[];
+  command: string | null;
+  runtime: string | null;
+  notes: { slug: string; title: string; tags: string; links: readonly string[]; line: string }[];
+  status: string | null;
 };
 
 const devices: { kind: DeviceKind; label: string; credit: string; creditHref: string }[] = [
@@ -379,6 +386,8 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
     new Set(project.surfaces.map((item) => item.src)).size > 1 ? project.surfaces : [];
 
   function deviceFor(item: ShowcaseProject) {
+    if (item.form === "code") return null;
+    if (item.form === "app" && item.surfaces.some((surface) => surface.device === "iphone")) return "iphone" as const;
     const tags = item.tags.map((tag) => tag.toLowerCase());
     const mobile = tags.includes("mobile");
     const web = tags.includes("web");
@@ -415,7 +424,8 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
   async function copyLink() {
     const url = new URL(window.location.href);
     url.hash = repo;
-    url.searchParams.set("device", kind === "iphone" ? "phone" : "laptop");
+    if (project.form === "code") url.searchParams.delete("device");
+    else url.searchParams.set("device", kind === "iphone" ? "phone" : "laptop");
     const ok = await copyText(url.toString());
     if (!ok) return;
     history.replaceState(null, "", url);
@@ -454,6 +464,26 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
       >
       {wide === false ? (
         <div className="relative min-h-0 flex-1 overflow-hidden bg-[var(--bg)]">
+          {project.form === "code" ? (
+            <div className="absolute inset-0 flex flex-col px-3 pt-3" style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
+              <h2 id="work-heading" className="sr-only">
+                My work
+              </h2>
+              <CodeStage
+                key={project.repo}
+                title={project.title}
+                summary={project.intro || project.summary}
+                pieces={project.pieces}
+                command={project.command}
+                runtime={project.runtime}
+                notes={project.notes}
+                sources={captionLinks}
+                index={projectIndex + 1}
+                total={projects.length}
+              />
+            </div>
+          ) : (
+          <>
           <MobileScreen src={phoneSurface?.src ?? ""} title={`${project.title} on a phone`} />
           <div
             className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] px-5 pt-24 [&_a]:pointer-events-auto"
@@ -475,6 +505,9 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
               <p className="mt-3 text-[clamp(1.7rem,7vw,2.4rem)] font-bold leading-none tracking-[-0.045em]">
                 {project.title}
               </p>
+              {project.status ? (
+                <p className="mt-2 font-mono text-[11px] tracking-[0.14em] uppercase">{project.status}</p>
+              ) : null}
               <p className="mt-3 line-clamp-2 text-base leading-6">{project.intro || project.summary}</p>
               <p className="mt-2 font-mono text-[11px] tracking-[0.02em] text-muted">
                 {[project.stack, project.meta].filter(Boolean).join(" · ")}
@@ -482,6 +515,8 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
               <SourceLinks sources={captionLinks} className="mt-3" />
             </div>
           </div>
+          </>
+          )}
         </div>
       ) : null}
       {wide ? (
@@ -490,6 +525,9 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
         <h2 id="work-heading" className="shrink-0 text-xs font-bold uppercase tracking-[0.22em]">
           My work
         </h2>
+        {project.form === "code" ? (
+          <p className="border border-black px-3 py-3 font-mono text-[11px] tracking-[0.16em]">Code</p>
+        ) : (
         <div
           role="radiogroup"
           aria-label="Device"
@@ -520,6 +558,7 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
               );
             })}
           </div>
+        )}
           <button
             type="button"
             onClick={copyLink}
@@ -534,15 +573,30 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
           <div className="relative min-h-0 flex-1">
             <div
               role="application"
-              aria-label={`${project.title} on ${device.label}`}
+              aria-label={project.form === "code" ? `${project.title}, code` : `${project.title} on ${device.label}`}
               className="h-full min-h-0 w-full"
             >
+              {project.form === "code" ? (
+                <CodeStage
+                  key={project.repo}
+                  title={project.title}
+                  summary={project.intro || project.summary}
+                  pieces={project.pieces}
+                  command={project.command}
+                  runtime={project.runtime}
+                  notes={project.notes}
+                  sources={[]}
+                  index={projectIndex + 1}
+                  total={projects.length}
+                />
+              ) : (
               <DeviceStage
                 kind={kind}
                 src={surface?.src ?? ""}
                 title={`${project.title} on ${device.label}`}
                 engageRef={engageRef}
               />
+              )}
             </div>
           </div>
           <div className="mt-3 max-w-xl shrink-0">
@@ -575,6 +629,7 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
             ) : null}
           </div>
           <SourceLinks sources={captionLinks} className="mt-2 shrink-0" />
+          {project.form === "code" ? null : (
           <div className="mt-3 flex justify-end">
             <details className="model-credit">
               <summary className="cursor-pointer font-mono text-[11px] text-muted">Model credit</summary>
@@ -596,6 +651,7 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
               </p>
             </details>
           </div>
+          )}
         </div>
 
         <div ref={viewRef} className="work-view relative min-h-0 overflow-hidden">
@@ -618,13 +674,16 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
                       type="button"
                       aria-current={selected ? "true" : undefined}
                       onClick={() => select(item.repo)}
-                      className="tap flex w-full items-start gap-3 px-3 pt-3 text-left"
+                      className={`tap flex w-full items-start gap-3 px-3 pt-3 text-left ${selected && item.form === "code" ? "pb-3" : ""}`}
                     >
                       <span className="font-mono text-[11px] tracking-[0.14em]">
                         {String(index + 1).padStart(2, "0")}
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-base font-bold leading-tight tracking-[-0.03em]">{item.title}</span>
+                        {item.status ? (
+                          <span className="mt-1 block font-mono text-[10px] tracking-[0.14em] uppercase">{item.status}</span>
+                        ) : null}
                         {selected ? null : (
                           <>
                             <span className="mt-1.5 block line-clamp-2 text-sm leading-6">{item.summary}</span>
@@ -635,7 +694,7 @@ export default function Showcase({ projects }: { projects: ShowcaseProject[] }) 
                         )}
                       </span>
                     </button>
-                    {selected && item.bullets.length > 0 ? (
+                    {selected && item.form === "code" ? null : selected && item.bullets.length > 0 ? (
                       <div className="px-3 pb-3 pl-9">
                         {item.onResume ? (
                           <p className="font-mono text-[10px] tracking-[0.16em] opacity-70">CV</p>

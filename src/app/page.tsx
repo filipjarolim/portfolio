@@ -5,7 +5,8 @@ import { courses } from "@/content/courses";
 import { CopyControl } from "@/components/copy-control";
 import { HeroIntro } from "@/components/hero-intro";
 import type { ShowcaseProject } from "@/components/showcase";
-import type { ProjectSurface, SelectedRepo } from "@/content/selection";
+import type { SelectedRepo } from "@/content/selection";
+import { projectForm, showcaseSurfaces } from "@/lib/showcase-form";
 import { ShowcaseSlot } from "@/components/showcase-slot";
 import { SiteHeader } from "@/components/site-header";
 import {
@@ -29,24 +30,6 @@ function sourcesFor(item: SelectedRepo, github: string | null, homepage: string 
   const site = item.site || homepage;
   if (site) sources.push({ label: "Live", href: site });
   return sources;
-}
-
-function surfacesFor(item: SelectedRepo): ProjectSurface[] {
-  const listed = item.surfaces ?? [];
-  if (listed.length > 0) {
-    const mac = listed.find((surface) => surface.device === "macbook");
-    const phone = listed.find((surface) => surface.device === "iphone");
-    const fallback = listed[0];
-    return [
-      mac ?? { device: "macbook", label: fallback.label, src: fallback.src },
-      phone ?? { device: "iphone", label: fallback.label, src: fallback.src },
-    ];
-  }
-  const src = item.embed ?? `/screen/${item.repo}`;
-  return [
-    { device: "macbook", label: "Web", src },
-    { device: "iphone", label: "Phone", src },
-  ];
 }
 
 export default async function Home() {
@@ -86,7 +69,13 @@ export default async function Home() {
       stack: item.stack,
       meta: meta.join(" · "),
       sources: sourcesFor(item, repo?.htmlUrl ?? null, repo?.homepage ?? null),
-      surfaces: surfacesFor(item),
+      surfaces: showcaseSurfaces(item),
+      form: projectForm(item),
+      pieces: [...(item.pieces ?? [])],
+      command: item.command ?? null,
+      runtime: item.runtime ?? null,
+      notes: [...(item.notes ?? [])],
+      status: item.status ?? null,
     };
   });
 

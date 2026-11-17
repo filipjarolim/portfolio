@@ -53,7 +53,7 @@ describe("normalize", () => {
     });
     assert.equal(copy.skills.length, skills.length);
     assert.deepEqual(copy.likes, [...likes]);
-    assert.deepEqual(copy.focus, ["Cybersecurity", "Mobile apps"]);
+    assert.deepEqual(copy.focus, ["Cybersecurity"]);
   });
 
   it("keeps a shorter skill list when the labels are real", () => {

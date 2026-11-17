@@ -57,6 +57,9 @@ async function ProjectScreen({
       <h1 className="mt-3 text-4xl font-bold tracking-[-0.04em] sm:text-5xl">
         {title}
       </h1>
+      {project.status ? (
+        <p className="mt-3 font-mono text-xs tracking-[0.14em] uppercase">{project.status}</p>
+      ) : null}
       <p className="mt-4 text-lg leading-snug">{intro}</p>
       {project.dates ? (
         <p className="mt-3 font-mono text-xs tracking-[0.04em]">{project.dates}</p>

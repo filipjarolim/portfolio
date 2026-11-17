@@ -16,6 +16,31 @@ describe("selected projects", () => {
     }
   });
 
+  it("shows a program with no product screen as code", () => {
+    const brain = selectedRepos.find((item) => item.repo === "brainCore");
+    assert.equal(brain?.form, "code");
+    assert.ok((brain?.pieces?.length ?? 0) > 0);
+    assert.ok(brain?.command?.includes("brain ask"));
+    assert.ok(brain?.runtime?.includes("ollama"));
+    const slugs = new Set((brain?.notes ?? []).map((note) => note.slug));
+    assert.ok(slugs.has("IB000_Math"));
+    assert.ok(slugs.has("Asymmetric_Crypto"));
+    assert.equal(slugs.has("cybersecurity_student"), false);
+    for (const note of brain?.notes ?? []) {
+      for (const link of note.links) assert.ok(slugs.has(link), link);
+    }
+  });
+
+  it("keeps Brain, NaučMěTo, and Perimeter, and leaves the rest off the site", () => {
+    assert.deepEqual(
+      selectedRepos.map((item) => item.repo),
+      ["brainCore", "Nauc-Me-To", "perimeter"],
+    );
+    const study = selectedRepos.find((item) => item.repo === "Nauc-Me-To");
+    assert.equal(study?.status, "In development");
+    assert.equal(study?.resume, undefined);
+  });
+
   it("keeps Perimeter on the site and off the résumé", () => {
     const perimeter = selectedRepos.find((item) => item.repo === "perimeter");
     assert.ok(perimeter);

@@ -39,22 +39,12 @@ const intros: Record<string, { intro: string; tags: string[] }> = {
   },
   "Nauc-Me-To": {
     intro:
-      "NaučMěTo takes a PDF, slides, or notes and turns them into a quiz, a cheat sheet, and flashcards. Each file keeps its notes and a workspace. Supabase handles the account, the files, and the database.",
+      "NaučMěTo is still in development. It takes a PDF, slides, or notes and turns them into a quiz, a cheat sheet, and flashcards. Supabase handles the account, the files, and the database.",
     tags: ["Web"],
-  },
-  plavanilavia: {
-    intro:
-      "The site for Plavecká škola Lavia. The season lives in the repository, staff edit it in the admin, and a save commits to GitHub so Vercel can rebuild.",
-    tags: ["Web"],
-  },
-  "Strakata-Turistika-ANDROID": {
-    intro:
-      "Strakatá turistika is a phone app and a website. The Flutter repository ships the GPS app for Android and iOS. The website is a second repository, for trips, GPX files, and the season board.",
-    tags: ["Web", "Mobile"],
   },
   perimeter: {
     intro:
-      "Perimeter is a small security desk for the sites already on this page. It reads each response and says, in plain language, what the browser is being told.",
+      "Perimeter is a small security desk for this site. It reads the response and says, in plain language, what the browser is being told.",
     tags: ["Security"],
   },
 };
@@ -87,10 +77,10 @@ function projectCopy(repo: string, value: unknown): ProjectCopy {
 
 export function defaultSiteCopy(): SiteCopy {
   return normalize({
-    headline: "Cybersecurity and mobile apps.",
-    intro: "The projects here are the software I ship now, on the web and on a phone.",
+    headline: "Cybersecurity.",
+    intro: "Brain is what I ship. NaučMěTo is still in development.",
     note: linkedinIntro,
-    focus: ["Cybersecurity", "Mobile apps"],
+    focus: ["Cybersecurity"],
     practice,
     likes: [...likes],
     skills: skills.map((item) => ({ ...item })),
@@ -132,12 +122,10 @@ export function normalize(input: unknown): SiteCopy {
   const focus = lines(record.focus, 6, 32);
   const likeLines = lines(record.likes, 8, 40);
   return {
-    headline: clip(record.headline, 160) || "Cybersecurity and mobile apps.",
-    intro:
-      clip(record.intro, 800) ||
-      "The projects here are the software I ship now, on the web and on a phone.",
+    headline: clip(record.headline, 160) || "Cybersecurity.",
+    intro: clip(record.intro, 800) || "Brain is what I ship. NaučMěTo is still in development.",
     note: clip(record.note, 400) || linkedinIntro,
-    focus: focus.length ? focus : ["Cybersecurity", "Mobile apps"],
+    focus: focus.length ? focus : ["Cybersecurity"],
     practice: clip(record.practice, 600) || practice,
     likes: likeLines.length ? likeLines : [...likes],
     skills: parsedSkills.length ? parsedSkills : skills.map((item) => ({ ...item })),

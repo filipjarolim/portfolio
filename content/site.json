@@ -1,10 +1,9 @@
 {
-  "headline": "Cybersecurity and mobile apps.",
-  "intro": "The projects here are the software I ship now, on the web and on a phone.",
+  "headline": "Cybersecurity.",
+  "intro": "Brain is what I ship. NaučMěTo is still in development.",
   "note": "Open to entry-level roles, research projects, and internships across Cybersecurity, Data Analysis, and Technical Product Design.",
   "focus": [
-    "Cybersecurity",
-    "Mobile apps"
+    "Cybersecurity"
   ],
   "practice": "I use Cursor heavily for coding. Agents take the repetitive work. I decide what stays, and I review what ships.",
   "likes": [
@@ -15,11 +14,11 @@
   "skills": [
     {
       "label": "Languages",
-      "value": "Python, TypeScript, Dart"
+      "value": "Python, TypeScript"
     },
     {
       "label": "Frameworks",
-      "value": "Next.js, React, Flutter"
+      "value": "Next.js, React"
     },
     {
       "label": "Tools",
@@ -29,8 +28,6 @@
   "projectOrder": [
     "brainCore",
     "Nauc-Me-To",
-    "plavanilavia",
-    "Strakata-Turistika-ANDROID",
     "perimeter"
   ],
   "projects": {
@@ -50,11 +47,11 @@
     },
     "Nauc-Me-To": {
       "title": "NaučMěTo",
-      "summary": "Upload study material and get a quiz, a cheat sheet, and flashcards generated from it.",
-      "intro": "NaučMěTo takes a PDF, slides, or notes and turns them into a quiz, a cheat sheet, and flashcards. Each file keeps its notes and a workspace. Supabase handles the account, the files, and the database.",
+      "summary": "Still in development. A quiz, a cheat sheet, and flashcards from uploaded study material.",
+      "intro": "NaučMěTo is still in development. It takes a PDF, slides, or notes and turns them into a quiz, a cheat sheet, and flashcards. Supabase handles the account, the files, and the database.",
       "bullets": [
-        "Upload a PDF, slides, or notes and get a quiz, a cheat sheet, and flashcards from the file.",
-        "Notes and a workspace sit with each document.",
+        "Still in development.",
+        "Turns an uploaded PDF, slides, or notes into a quiz, a cheat sheet, and flashcards.",
         "Supabase handles auth, storage, and the database."
       ],
       "tags": [
@@ -62,43 +59,14 @@
       ],
       "hidden": false
     },
-    "plavanilavia": {
-      "title": "Plavecká škola Lavia",
-      "summary": "The school site at plavanilaviabrno.cz. Next.js, no database, hosted on Vercel.",
-      "intro": "The site for Plavecká škola Lavia. The season lives in the repository, staff edit it in the admin, and a save commits to GitHub so Vercel can rebuild.",
-      "bullets": [
-        "Public site for Plavecká škola Lavia at plavanilaviabrno.cz.",
-        "Next.js on Vercel, with season content stored in the repository.",
-        "Staff edit that content in the admin page; a save commits to GitHub and Vercel rebuilds."
-      ],
-      "tags": [
-        "Web"
-      ],
-      "hidden": false
-    },
-    "Strakata-Turistika-ANDROID": {
-      "title": "Strakatá turistika",
-      "summary": "A Flutter GPS app and a separate website for the same season.",
-      "intro": "Strakatá turistika is a phone app and a website. The Flutter repository ships the GPS app for Android and iOS. The website is a second repository, for trips, GPX files, and the season board.",
-      "bullets": [
-        "Flutter application for Android and iOS, built around GPS.",
-        "The website is a second repository: trips, GPX files, scoring, and the public board.",
-        "Listed on Google Play, and on LinkedIn as active since January 2025."
-      ],
-      "tags": [
-        "Web",
-        "Mobile"
-      ],
-      "hidden": false
-    },
     "perimeter": {
       "title": "Perimeter",
-      "summary": "A desk that reads the security headers of the sites on this page.",
-      "intro": "Perimeter is a small security desk for the sites already on this page. It reads each response and says, in plain language, what the browser is being told.",
+      "summary": "A desk that reads the security headers of this site.",
+      "intro": "Perimeter is a small security desk for this site. It reads the response and says, in plain language, what the browser is being told.",
       "bullets": [
-        "Reads this portfolio, Plavecká škola Lavia, and Strakatá turistika.",
+        "Reads the response headers of this site.",
         "Shows HTTPS, framing, content type, referrer policy, and permissions.",
-        "Stays on that allowlist."
+        "Stays on this site."
       ],
       "tags": [
         "Security"
